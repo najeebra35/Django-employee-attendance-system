@@ -1,0 +1,67 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ action }} Document Type{% endblock %}
+{% block page_title %}{{ action }} Document Type{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-title">{{ action }} Document Type</div>
+  <a href="{% url 'doctype_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<form method="post" style="max-width:540px">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="fas fa-tag" style="color:var(--orange)"></i> Type Details</span></div>
+    <div class="card-body">
+
+      <div class="form-group">
+        <label class="form-label">Name <span style="color:#dc2626">*</span></label>
+        <input type="text" name="name" class="form-control" required
+          placeholder="e.g. Passport, Emirates ID, Residence Visa"
+          value="{{ dt.name|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" rows="2"
+          placeholder="Optional description…">{{ dt.description|default:'' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border-radius:10px;border:1.5px solid var(--slate-200);transition:border-color .15s"
+          onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--slate-200)'">
+          <input type="checkbox" name="requires_expiry" value="1" style="width:18px;height:18px;accent-color:var(--orange)"
+            {% if action == 'Add' or dt.requires_expiry %}checked{% endif %} id="req-exp">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--slate-800)">Requires Expiry Date</div>
+            <div style="font-size:11px;color:var(--slate-400)">Track expiry and generate alerts for this document type</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="form-group" id="alert-group">
+        <label class="form-label">Alert Days Before Expiry</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="number" name="alert_days" class="form-control" style="width:100px"
+            value="{{ dt.alert_days|default:30 }}" min="1" max="365">
+          <span style="font-size:13px;color:var(--slate-500)">days before expiry</span>
+        </div>
+        <div style="font-size:11px;color:var(--slate-400);margin-top:4px">Documents expiring within this many days will show as "Expiring Soon"</div>
+      </div>
+
+      <div style="display:flex;gap:8px;padding-top:8px">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> {{ action }} Type</button>
+        <a href="{% url 'doctype_list' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('req-exp').addEventListener('change', function() {
+  document.getElementById('alert-group').style.opacity = this.checked ? '1' : '.4';
+});
+</script>
+{% endblock %}

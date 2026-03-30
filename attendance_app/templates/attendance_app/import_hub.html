@@ -1,0 +1,107 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Bulk Import{% endblock %}
+{% block page_title %}Bulk Import{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">📤 Bulk Import</div>
+    <div class="page-header-sub">Import employees or attendance records from Excel files</div>
+  </div>
+</div>
+
+<!-- How it works banner -->
+<div style="background:white;border-radius:14px;padding:20px 24px;margin-bottom:24px;box-shadow:var(--shadow);border:1px solid var(--slate-200)">
+  <div style="font-size:13px;font-weight:800;color:var(--slate-700);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">How It Works</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative">
+    <div style="position:absolute;top:20px;left:12.5%;right:12.5%;height:2px;background:var(--orange-pale);z-index:0"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:800;box-shadow:0 2px 8px rgba(249,115,22,.3)">1</div>
+      <div style="font-size:12px;font-weight:600;color:var(--slate-600);text-align:center">Download Template</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:800;box-shadow:0 2px 8px rgba(249,115,22,.3)">2</div>
+      <div style="font-size:12px;font-weight:600;color:var(--slate-600);text-align:center">Fill in Excel</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:800;box-shadow:0 2px 8px rgba(249,115,22,.3)">3</div>
+      <div style="font-size:12px;font-weight:600;color:var(--slate-600);text-align:center">Upload File</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:800;box-shadow:0 2px 8px rgba(249,115,22,.3)">4</div>
+      <div style="font-size:12px;font-weight:600;color:var(--slate-600);text-align:center">Review &amp; Confirm</div>
+    </div>
+  </div>
+</div>
+
+<!-- Import cards -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- Employee Import -->
+  <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:56px;height:56px;border-radius:16px;background:var(--orange-pale);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">👥</div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--slate-900)">Employee Import</div>
+        <div style="font-size:12px;color:var(--slate-400);margin-top:2px">{{ total_emp }} employees currently in system</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--slate-500);line-height:1.8;margin-bottom:20px">
+      Import multiple employees at once. Supports:<br>
+      <span style="color:var(--slate-700)">✓</span> Name, Emirates ID, Mobile, DOB<br>
+      <span style="color:var(--slate-700)">✓</span> Joining date, Job title, Country<br>
+      <span style="color:var(--slate-700)">✓</span> Employee type & status<br>
+      <span style="color:var(--slate-700)">✓</span> Duplicate detection with skip/overwrite option
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'import_employees_template' %}" class="btn btn-secondary" style="font-size:13px;flex:1;justify-content:center">
+        <i class="fas fa-download"></i> Download Template
+      </a>
+      <a href="{% url 'import_employees' %}" class="btn btn-primary" style="font-size:13px;flex:1;justify-content:center">
+        <i class="fas fa-file-arrow-up"></i> Import Employees
+      </a>
+    </div>
+  </div>
+
+  <!-- Attendance Import -->
+  <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:56px;height:56px;border-radius:16px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">📅</div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--slate-900)">Attendance Import</div>
+        <div style="font-size:12px;color:var(--slate-400);margin-top:2px">{{ total_att }} records currently in system</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--slate-500);line-height:1.8;margin-bottom:20px">
+      Import historical or bulk attendance data. Supports:<br>
+      <span style="color:var(--slate-700)">✓</span> Employee name, Date, Status<br>
+      <span style="color:var(--slate-700)">✓</span> In time, Out time, OT hours<br>
+      <span style="color:var(--slate-700)">✓</span> Notes per record<br>
+      <span style="color:var(--slate-700)">✓</span> Duplicate detection with skip/overwrite option
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'import_attendance_template' %}" class="btn btn-secondary" style="font-size:13px;flex:1;justify-content:center">
+        <i class="fas fa-download"></i> Download Template
+      </a>
+      <a href="{% url 'import_attendance' %}" class="btn btn-primary" style="background:#2563eb;border-color:#2563eb;font-size:13px;flex:1;justify-content:center">
+        <i class="fas fa-file-arrow-up"></i> Import Attendance
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tips -->
+<div style="margin-top:20px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:16px 20px">
+  <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px"><i class="fas fa-lightbulb"></i> Tips for a smooth import</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#78350f">
+    <div>• Always download the latest template — don't modify column headers</div>
+    <div>• Dates must be in YYYY-MM-DD format (e.g. 2025-03-15)</div>
+    <div>• Times must be in HH:MM format (e.g. 07:30)</div>
+    <div>• Employee names in attendance must exactly match the system</div>
+    <div>• You will see a full preview before anything is saved</div>
+    <div>• Errors are shown row-by-row — fix and re-upload</div>
+  </div>
+</div>
+
+{% endblock %}

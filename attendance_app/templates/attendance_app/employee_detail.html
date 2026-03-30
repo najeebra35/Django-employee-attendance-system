@@ -1,0 +1,412 @@
+{% extends 'attendance_app/base.html' %}
+{% load attendance_tags %}
+{% block title %}{{ employee.name }}{% endblock %}
+{% block page_title %}Employee Detail{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .detail-grid{grid-template-columns:1fr!important;}
+  .profile-header{flex-direction:column;align-items:flex-start!important;gap:16px;}
+  .profile-photo{width:64px;height:64px;font-size:26px;}
+  .calendar-wrap{overflow-x:auto;}
+}
+</style>
+<style>
+.cal-day { min-height:80px; border-radius:10px; padding:8px; border:1.5px solid var(--slate-200); transition:all .18s; background:white; }
+.cal-day.has-data { cursor:pointer; }
+.cal-day.has-data:hover { transform:scale(1.05); box-shadow:0 4px 14px rgba(0,0,0,.1); z-index:2; }
+.cal-day.empty { background:transparent; border-color:transparent; pointer-events:none; }
+.cal-day.today { border-color:var(--orange) !important; box-shadow:0 0 0 2px rgba(249,115,22,.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div style="width:60px;height:60px;border-radius:14px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--orange-dark);flex-shrink:0">
+      {{ employee.name|make_list|first|upper }}
+    </div>
+    <div>
+      <div class="page-header-title" style="font-size:20px">{{ employee.name }}</div>
+      <div style="display:flex;gap:8px;margin-top:5px;align-items:center;flex-wrap:wrap">
+        <span class="badge {% if employee.status == 'active' %}badge-green{% else %}badge-red{% endif %}">
+          {% if employee.status == 'active' %}● Active{% else %}● Disabled{% endif %}
+        </span>
+        <span class="badge {% if employee.emp_type == 'permanent' %}badge-blue{% else %}badge-yellow{% endif %}">
+          {{ employee.get_emp_type_display }}
+        </span>
+        {% if employee.job_title %}<span style="font-size:13px;color:var(--slate-500)"><i class="fas fa-briefcase" style="font-size:11px"></i> {{ employee.job_title }}</span>{% endif %}
+        {% if employee.mobile %}<span style="font-size:13px;color:var(--slate-500)"><i class="fas fa-phone" style="font-size:11px"></i> {{ employee.mobile }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="actions-row">
+    {% if 'attendance_add' in user_perms or is_admin %}<a href="{% url 'attendance_mark' %}" class="btn btn-outline btn-sm"><i class="fas fa-pen-to-square"></i> Mark Attendance</a>{% endif %}
+    {% if 'employee_edit' in user_perms or is_admin %}<a href="{% url 'employee_edit' employee.pk %}" class="btn btn-primary btn-sm"><i class="fas fa-pen"></i> Edit</a>{% endif %}
+    <a href="{% url 'employee_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fas fa-calendar-check"></i></div>
+    <div><div class="stat-value">{{ month_present }}</div><div class="stat-label">Present This Month</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-calendar-xmark"></i></div>
+    <div><div class="stat-value">{{ month_absent }}</div><div class="stat-label">Absent This Month</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fas fa-plane-departure"></i></div>
+    <div><div class="stat-value">{{ month_leave }}</div><div class="stat-label">On Leave This Month</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon orange"><i class="fas fa-calendar-days"></i></div>
+    <div><div class="stat-value">{% if employee.joining_date %}{{ employee.joining_date|timesince|truncatewords:2 }}{% else %}—{% endif %}</div><div class="stat-label">Tenure</div></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-container">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-info"><i class="fas fa-id-card"></i> Information</button>
+    <button class="tab-btn" data-tab="tab-calendar" id="calendar-tab-btn"><i class="fas fa-calendar"></i> Attendance Calendar</button>
+    <button class="tab-btn" data-tab="tab-attendance"><i class="fas fa-list-check"></i> Recent Attendance</button>
+    <button class="tab-btn" data-tab="tab-leaves"><i class="fas fa-plane-departure"></i> Leave History</button>
+    <button class="tab-btn" data-tab="tab-activity"><i class="fas fa-clock-rotate-left"></i> Activity</button>
+  </div>
+
+  <!-- INFO TAB -->
+  <div class="tab-pane active" id="tab-info">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="fas fa-user" style="color:var(--orange)"></i> Personal Details</span></div>
+        <div class="card-body">
+          <table style="width:100%;border-collapse:collapse">
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);width:42%">Emirates ID</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.emirates_id|default:"—" }}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Mobile</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.mobile|default:"—" }}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Date of Birth</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.dob|date:"d M Y"|default:"—" }}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Country</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.country|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Address</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.address|default:"—" }}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="fas fa-briefcase" style="color:var(--orange)"></i> Job Details</span></div>
+        <div class="card-body">
+          <table style="width:100%;border-collapse:collapse">
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);width:42%">Job Title</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.job_title|default:"—" }}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Joining Date</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.joining_date|date:"d M Y"|default:"—" }}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Employee Type</td>
+              <td style="padding:10px 0"><span class="badge {% if employee.emp_type == 'permanent' %}badge-blue{% else %}badge-yellow{% endif %}">{{ employee.get_emp_type_display }}</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--slate-100)">
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Status</td>
+              <td style="padding:10px 0"><span class="badge {% if employee.status == 'active' %}badge-green{% else %}badge-red{% endif %}">{{ employee.get_status_display }}</span></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Added On</td>
+              <td style="padding:10px 0;font-size:13.5px;font-weight:500;color:var(--slate-800)">{{ employee.created_at|date:"d M Y" }}</td>
+            </tr>
+          </table>
+          {% if employee.description %}
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--slate-100)">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);margin-bottom:8px">Notes</div>
+            <p style="font-size:13.5px;color:var(--slate-700);line-height:1.6">{{ employee.description }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDAR TAB -->
+  <div class="tab-pane" id="tab-calendar">
+    <div class="card">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="changeMonth(-1)" class="btn btn-sm btn-secondary" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center"><i class="fas fa-chevron-left" style="font-size:11px"></i></button>
+          <span class="card-title" id="cal-month-label" style="min-width:160px;text-align:center"></span>
+          <button onclick="changeMonth(1)" class="btn btn-sm btn-secondary" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center"><i class="fas fa-chevron-right" style="font-size:11px"></i></button>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <span style="font-size:11px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#22c55e;display:inline-block"></span>Present</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#ef4444;display:inline-block"></span>Absent</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#f59e0b;display:inline-block"></span>Half Day</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#6366f1;display:inline-block"></span>Holiday</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#8b5cf6;display:inline-block"></span>Leave</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Sun</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Mon</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Tue</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Wed</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Thu</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Fri</div>
+          <div style="text-align:center;font-size:11px;font-weight:700;color:var(--slate-500);padding:6px 0">Sat</div>
+        </div>
+        <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+          <div id="cal-loading" style="grid-column:span 7;text-align:center;padding:40px;color:var(--slate-400)">
+            <i class="fas fa-spinner fa-spin" style="font-size:24px"></i>
+            <div style="margin-top:8px;font-size:13px">Loading calendar...</div>
+          </div>
+        </div>
+        <div id="cal-summary" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--slate-100)">
+          <div style="font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Monthly Summary</div>
+          <div id="cal-summary-content" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT ATTENDANCE TAB -->
+  <div class="tab-pane" id="tab-attendance">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Recent Attendance <span style="font-weight:400;color:var(--slate-400)">(Last 30 records)</span></span></div>
+      <div class="table-wrap">
+        {% if recent_attendance %}
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Status</th><th>In Time</th><th>Out Time</th><th>OT Hours</th><th>Total Hours</th></tr></thead>
+          <tbody>
+            {% for att in recent_attendance %}
+            <tr>
+              <td><div style="font-weight:600;font-size:13px">{{ att.date|date:"d M Y" }}</div><div style="font-size:11px;color:var(--slate-400)">{{ att.date|date:"l" }}</div></td>
+              <td><span class="badge {% if att.status == 'present' %}badge-green{% elif att.status == 'absent' %}badge-red{% elif att.status == 'half_day' %}badge-yellow{% elif att.status == 'leave' %}badge-purple{% else %}badge-blue{% endif %}">{{ att.get_status_display }}</span></td>
+              <td style="font-weight:500">{{ att.in_time|time:"H:i"|default:"—" }}</td>
+              <td style="font-weight:500">{{ att.out_time|time:"H:i"|default:"—" }}</td>
+              <td>{% if att.ot_hours %}{{ att.ot_hours }}h{% else %}—{% endif %}</td>
+              <td style="font-weight:600;color:var(--orange)">{{ att.total_hours }}h</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-calendar-check"></i><p>No attendance records yet</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAVES TAB -->
+  <div class="tab-pane" id="tab-leaves">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Leave History</span>
+        <a href="{% url 'leave_add' %}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> New Request</a>
+      </div>
+      <div class="table-wrap">
+        {% if leave_requests %}
+        <table class="data-table">
+          <thead><tr><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Applied</th><th>Reason</th></tr></thead>
+          <tbody>
+            {% for lr in leave_requests %}
+            <tr>
+              <td style="font-weight:600">{{ lr.leave_type.name }}</td>
+              <td>{{ lr.start_date|date:"d M Y" }}</td>
+              <td>{{ lr.end_date|date:"d M Y" }}</td>
+              <td><span class="badge badge-orange">{{ lr.total_days }} day{{ lr.total_days|pluralize }}</span></td>
+              <td><span class="badge {% if lr.status == 'approved' %}badge-green{% elif lr.status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">{{ lr.get_status_display }}</span></td>
+              <td class="text-muted" style="font-size:12px;white-space:nowrap">{{ lr.applied_on|date:"d M Y" }}</td>
+              <td class="text-muted" style="font-size:12px">{{ lr.reason|truncatechars:40 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-plane"></i><p>No leave history</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVITY TAB -->
+  <div class="tab-pane" id="tab-activity">
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="fas fa-clock-rotate-left" style="color:var(--orange)"></i> Activity Log for {{ employee.name }}</span></div>
+      <div class="card-body" style="padding:0">
+        {% if activities %}
+        <div style="padding:8px 16px">
+          {% for log in activities %}
+          <div style="display:flex;gap:14px;padding:14px 6px;border-bottom:1px solid var(--slate-100)">
+            <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;{% if log.action == 'create' %}background:#dcfce7;color:#16a34a{% elif log.action == 'delete' %}background:#fee2e2;color:#dc2626{% elif log.action == 'update' %}background:#dbeafe;color:#1d4ed8{% else %}background:var(--slate-100);color:var(--slate-600){% endif %}">
+              <i class="fas fa-{% if log.action == 'create' %}plus{% elif log.action == 'delete' %}trash{% elif log.action == 'update' %}pen{% else %}circle-info{% endif %}"></i>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13.5px;font-weight:600;color:var(--slate-800)">
+                <span class="badge {% if log.action == 'create' %}badge-green{% elif log.action == 'delete' %}badge-red{% elif log.action == 'update' %}badge-blue{% else %}badge-gray{% endif %}" style="margin-right:6px">{{ log.get_action_display }}</span>
+                {{ log.description|default:log.model_name }}
+              </div>
+              <div style="font-size:12px;color:var(--slate-400);margin-top:3px">
+                by <span style="font-weight:600;color:var(--slate-600)">{{ log.user.username|default:"System" }}</span>
+                &bull; {{ log.timestamp|date:"d M Y, H:i" }}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-clock"></i><p>No activity recorded yet</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DAY DETAIL MODAL -->
+<div class="modal-overlay" id="day-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header" id="modal-header">
+      <span class="modal-title" id="modal-date-title">Attendance Details</span>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="modal-content"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var empId = {{ employee.pk }};
+var currentYear = new Date().getFullYear();
+var currentMonth = new Date().getMonth() + 1;
+var calendarData = {};
+var calendarLoaded = false;
+var todayDate = new Date();
+var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function loadCalendar() {
+  document.getElementById('cal-loading').style.display = 'block';
+  document.getElementById('cal-summary').style.display = 'none';
+  fetch('/employees/' + empId + '/calendar-data/?year=' + currentYear + '&month=' + currentMonth)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      calendarData = {};
+      data.events.forEach(function(e){ calendarData[e.date] = e; });
+      renderCalendar();
+    })
+    .catch(function(){
+      document.getElementById('cal-loading').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed to load';
+    });
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = months[currentMonth - 1] + ' ' + currentYear;
+  var grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+  var firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+  var daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  var summary = {};
+
+  for (var i = 0; i < firstDay; i++) {
+    var empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for (var d = 1; d <= daysInMonth; d++) {
+    var mm = currentMonth < 10 ? '0' + currentMonth : '' + currentMonth;
+    var dd = d < 10 ? '0' + d : '' + d;
+    var dateStr = currentYear + '-' + mm + '-' + dd;
+    var ev = calendarData[dateStr];
+    var isToday = todayDate.getFullYear() === currentYear && (todayDate.getMonth() + 1) === currentMonth && todayDate.getDate() === d;
+
+    var cell = document.createElement('div');
+    cell.className = 'cal-day' + (ev ? ' has-data' : '') + (isToday ? ' today' : '');
+
+    if (ev) {
+      cell.style.background = ev.color + '15';
+      cell.style.borderColor = ev.color + '55';
+      summary[ev.status] = (summary[ev.status] || 0) + 1;
+      var inOut = (ev.in_time && ev.in_time !== '-') ? '<div style="font-size:10px;color:var(--slate-500)">' + ev.in_time + (ev.out_time && ev.out_time !== '-' ? '<br>' + ev.out_time : '') + '</div>' : '';
+      cell.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isToday ? 'var(--orange)' : 'var(--slate-800)') + '">' + d + '</div>' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + ev.color + ';margin:4px 0 2px"></div>' +
+        '<div style="font-size:10px;font-weight:700;color:' + ev.color + '">' + ev.status + '</div>' + inOut;
+      (function(ds, evData){ cell.addEventListener('click', function(){ showDayModal(ds, evData); }); })(dateStr, ev);
+    } else {
+      cell.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isToday ? 'var(--orange)' : 'var(--slate-800)') + '">' + d + '</div>' +
+        (isToday ? '<div style="font-size:9px;color:var(--orange);font-weight:700;margin-top:3px">TODAY</div>' : '<div style="font-size:10px;color:var(--slate-300);margin-top:4px">No data</div>');
+    }
+    grid.appendChild(cell);
+  }
+
+  var summaryKeys = Object.keys(summary);
+  if (summaryKeys.length > 0) {
+    var sc = document.getElementById('cal-summary-content');
+    sc.innerHTML = summaryKeys.map(function(status) {
+      var found = Object.keys(calendarData).find(function(k){ return calendarData[k].status === status; });
+      var color = found ? calendarData[found].color : '#666';
+      return '<div style="display:flex;align-items:center;gap:6px;background:' + color + '15;border:1px solid ' + color + '33;border-radius:8px;padding:6px 12px">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>' +
+        '<span style="font-size:12px;font-weight:600;color:' + color + '">' + status + '</span>' +
+        '<span style="font-size:14px;font-weight:800;color:var(--slate-800)">' + summary[status] + '</span></div>';
+    }).join('');
+    document.getElementById('cal-summary').style.display = 'block';
+  }
+}
+
+function showDayModal(dateStr, ev) {
+  var parts = dateStr.split('-');
+  var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  document.getElementById('modal-date-title').textContent = d.toLocaleDateString('en-AE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('modal-header').style.borderBottom = '3px solid ' + ev.color;
+  function box(label, value, color) {
+    return '<div style="background:' + color + '10;border:1.5px solid ' + color + '25;border-radius:10px;padding:12px">' +
+      '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--slate-400)">' + label + '</div>' +
+      '<div style="font-size:18px;font-weight:800;color:' + color + ';margin-top:4px">' + value + '</div></div>';
+  }
+  document.getElementById('modal-content').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    box('Status', ev.status, ev.color) +
+    box('In Time', ev.in_time !== '-' ? ev.in_time : '—', '#22c55e') +
+    box('Out Time', ev.out_time !== '-' ? ev.out_time : '—', '#3b82f6') +
+    box('OT Hours', ev.ot_hours > 0 ? ev.ot_hours + ' hrs' : '—', '#f59e0b') +
+    box('Total Hours', ev.total_hours > 0 ? ev.total_hours + ' hrs' : '—', '#8b5cf6') +
+    '</div>';
+  document.getElementById('day-modal').classList.add('active');
+}
+
+function closeModal() { document.getElementById('day-modal').classList.remove('active'); }
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+  loadCalendar();
+}
+
+document.getElementById('day-modal').addEventListener('click', function(e){ if (e.target === this) closeModal(); });
+
+document.getElementById('calendar-tab-btn').addEventListener('click', function(){
+  if (!calendarLoaded) { calendarLoaded = true; loadCalendar(); }
+});
+</script>
+{% endblock %}

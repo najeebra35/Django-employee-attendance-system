@@ -1,0 +1,91 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Expiry Alerts{% endblock %}
+{% block page_title %}Document Expiry Alerts{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">⚠️ Expiry Alerts</div>
+    <div class="page-header-sub">{{ expired|length }} expired · {{ expiring|length }} expiring soon</div>
+  </div>
+  <a href="{% url 'document_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> All Documents</a>
+</div>
+
+{% if expired %}
+<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+  <span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+  <span style="font-size:13px;font-weight:800;color:#dc2626">EXPIRED ({{ expired|length }})</span>
+</div>
+<div class="card" style="margin-bottom:24px;border:2px solid #fecaca">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Employee</th><th>Document Type</th><th>Doc Number</th>
+        <th style="text-align:center">Expiry Date</th><th style="text-align:center">Overdue</th><th style="text-align:center">Actions</th>
+      </tr></thead>
+      <tbody>
+        {% for doc in expired %}
+        <tr style="background:rgba(254,242,242,.5)">
+          <td>
+            <div style="font-weight:700;color:var(--slate-900)">{{ doc.employee.name }}</div>
+            {% if doc.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ doc.employee.job_title }}</div>{% endif %}
+          </td>
+          <td><span style="font-weight:700;color:var(--slate-800)">{{ doc.doc_type.name }}</span></td>
+          <td style="font-family:monospace;font-size:13px">{{ doc.doc_number|default:"—" }}</td>
+          <td style="text-align:center;font-weight:700;color:#dc2626">{{ doc.expiry_date|date:"d M Y" }}</td>
+          <td style="text-align:center"><span class="badge badge-red" style="font-size:12px">{{ doc.days_until_expiry|cut:"-" }} days</span></td>
+          <td style="text-align:center">
+            <a href="{% url 'document_edit' doc.pk %}" class="btn btn-sm btn-primary" style="font-size:11px"><i class="fas fa-rotate"></i> Renew</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if expiring %}
+<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+  <span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
+  <span style="font-size:13px;font-weight:800;color:#d97706">EXPIRING SOON ({{ expiring|length }})</span>
+</div>
+<div class="card" style="border:2px solid #fde68a">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Employee</th><th>Document Type</th><th>Doc Number</th>
+        <th style="text-align:center">Expiry Date</th><th style="text-align:center">Days Left</th><th style="text-align:center">Actions</th>
+      </tr></thead>
+      <tbody>
+        {% for doc in expiring %}
+        <tr style="background:rgba(255,251,235,.5)">
+          <td>
+            <div style="font-weight:700;color:var(--slate-900)">{{ doc.employee.name }}</div>
+            {% if doc.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ doc.employee.job_title }}</div>{% endif %}
+          </td>
+          <td><span style="font-weight:700;color:var(--slate-800)">{{ doc.doc_type.name }}</span></td>
+          <td style="font-family:monospace;font-size:13px">{{ doc.doc_number|default:"—" }}</td>
+          <td style="text-align:center;font-weight:700;color:#d97706">{{ doc.expiry_date|date:"d M Y" }}</td>
+          <td style="text-align:center">
+            <span class="badge badge-yellow" style="font-size:12px;font-weight:800">{{ doc.days_until_expiry }} days</span>
+          </td>
+          <td style="text-align:center">
+            <a href="{% url 'document_edit' doc.pk %}" class="btn btn-sm btn-outline" style="font-size:11px"><i class="fas fa-pen"></i> Update</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if not expired and not expiring %}
+<div class="card"><div class="empty-state" style="padding:60px 20px">
+  <i class="fas fa-circle-check" style="font-size:48px;color:#22c55e;opacity:.6;margin-bottom:16px;display:block"></i>
+  <p style="color:#16a34a;font-weight:700">All documents are valid — no alerts!</p>
+</div></div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,85 @@
+# AttendPro — Employee Attendance Management System
+
+A full-featured Django attendance management system with Orange & White theme.
+
+## Features
+- ✅ Employee Management (Add/Edit/Delete/Detail + Calendar View)
+- ✅ Attendance Marking (Active employees only, In/Out/OT/Half Day/Absent)
+- ✅ Holiday Management (Public holidays + Auto Sunday generation)
+- ✅ Leave Management (Leave types, requests, approve/reject)
+- ✅ Export (PDF + Excel, 4 employees/page, date range, ABSENT in red)
+- ✅ User Management with Granular Permissions
+- ✅ Activity Log (all create/edit/delete tracked)
+- ✅ Dashboard with stats
+
+## Quick Setup
+
+### Requirements
+- Python 3.10+
+- pip
+
+### Installation
+
+```bash
+# 1. Navigate to project folder
+cd attendance_system
+
+# 2. (Optional) Create virtual environment
+python -m venv venv
+source venv/bin/activate        # Linux/Mac
+venv\Scripts\activate           # Windows
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run setup script (creates DB + admin user + sample data)
+bash setup.sh
+
+# 5. Start server
+python manage.py runserver
+```
+
+### Access
+- URL: http://127.0.0.1:8000
+- Username: **admin**
+- Password: **admin123**
+
+> ⚠️ Change the password after first login!
+
+## Company Customization
+
+Edit `attendance_system/settings.py`:
+```python
+COMPANY_NAME = "Your Company Name"
+COMPANY_ADDRESS = "Your Address, Dubai, UAE"
+COMPANY_PHONE = "+971 XX XXX XXXX"
+COMPANY_EMAIL = "info@yourcompany.com"
+```
+
+## Adding Your Logo to PDF Export
+
+Place your logo at:
+```
+attendance_app/static/attendance_app/img/logo.png
+```
+
+Then update `views.py` in the `export_pdf` function — uncomment the logo section.
+
+## PDF Export Layout
+- **4 employees per page** (each with IN / OUT / OT columns)
+- **Dates as rows**
+- **ABSENT shown in red**
+- **Holidays shown in purple**
+- Landscape A4 format
+
+## User Permissions
+Each user can be assigned individual permissions:
+- View/Add/Edit/Delete employees
+- View/Mark/Edit attendance
+- View/Add holidays
+- View/Manage leave requests
+- Export reports
+- View activity log
+- Manage users (admin only)
+
+The sidebar dynamically shows only the modules the user has access to.

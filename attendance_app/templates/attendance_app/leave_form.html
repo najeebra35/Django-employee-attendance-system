@@ -1,0 +1,49 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}New Leave Request{% endblock %}
+{% block page_title %}New Leave Request{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">New Leave Request</div>
+  <a href="{% url 'leave_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+<div class="card" style="max-width:600px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" class="form-control" required>
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}">{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Leave Type <span class="req">*</span></label>
+        <select name="leave_type" class="form-control" required>
+          <option value="">Select Type</option>
+          {% for lt in leave_types %}
+          <option value="{{ lt.pk }}">{{ lt.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Start Date <span class="req">*</span></label>
+          <input type="date" name="start_date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date <span class="req">*</span></label>
+          <input type="date" name="end_date" class="form-control" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea name="reason" class="form-control" rows="3" placeholder="Reason for leave..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Submit Request</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

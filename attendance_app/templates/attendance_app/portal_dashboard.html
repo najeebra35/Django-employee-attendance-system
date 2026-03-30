@@ -1,0 +1,195 @@
+{% extends 'attendance_app/portal_base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .portal-grid{grid-template-columns:1fr!important;}
+  .portal-stats{grid-template-columns:repeat(2,1fr)!important;}
+}
+</style>
+<style>
+.greeting-bar {
+  background:linear-gradient(135deg,var(--orange) 0%,var(--orange-dark) 100%);
+  border-radius:16px; padding:22px 28px; color:white; margin-bottom:24px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+}
+.greeting-name { font-size:20px; font-weight:800; }
+.greeting-sub  { font-size:13px; opacity:.85; margin-top:4px; }
+.today-chip { background:rgba(255,255,255,.2); border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600; }
+
+.trend-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block; }
+.status-present  { color:#16a34a; }
+.status-absent   { color:#dc2626; }
+.status-half_day { color:#d97706; }
+.status-leave    { color:#7c3aed; }
+.status-holiday  { color:#64748b; }
+.status-unmarked { color:#cbd5e1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Greeting -->
+<div class="greeting-bar">
+  <div>
+    <div class="greeting-name">👋 Hello, {{ emp.name|truncatechars:20 }}!</div>
+    <div class="greeting-sub">{{ today|date:"l, d F Y" }} &nbsp;·&nbsp; {{ month_name }}</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    {% if today_att %}
+      <div class="today-chip">
+        Today:
+        {% if today_att.status == 'present' %}✅ Present{% elif today_att.status == 'absent' %}❌ Absent{% elif today_att.status == 'half_day' %}🌓 Half Day{% elif today_att.status == 'leave' %}✈️ Leave{% elif today_att.status == 'holiday' %}🏖️ Holiday{% endif %}
+        {% if today_att.in_time %}&nbsp;· In {{ today_att.in_time|time:"H:i" }}{% endif %}
+        {% if today_att.out_time %}&nbsp;· Out {{ today_att.out_time|time:"H:i" }}{% endif %}
+      </div>
+    {% else %}
+      <div class="today-chip">Today: ⏳ Not marked yet</div>
+    {% endif %}
+    <a href="{% url 'portal_attendance' %}" style="background:white;color:var(--orange);border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;text-decoration:none">
+      View Attendance →
+    </a>
+  </div>
+</div>
+
+<!-- Stats grid -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-circle-check"></i></div>
+    <div><div class="stat-val">{{ present }}</div><div class="stat-label">Present Days</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#fee2e2;color:#dc2626"><i class="fas fa-circle-xmark"></i></div>
+    <div><div class="stat-val">{{ absent }}</div><div class="stat-label">Absent Days</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#fef3c7;color:#d97706"><i class="fas fa-adjust"></i></div>
+    <div><div class="stat-val">{{ half_day }}</div><div class="stat-label">Half Days</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#ede9fe;color:#7c3aed"><i class="fas fa-star"></i></div>
+    <div><div class="stat-val">{{ total_ot }}h</div><div class="stat-label">OT Hours</div></div>
+  </div>
+</div>
+
+<!-- Attendance rate + recent -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+
+  <!-- Rate card -->
+  <div class="card">
+    <div class="card-body">
+      <div style="font-size:14px;font-weight:800;color:var(--slate-900);margin-bottom:16px">📊 This Month — {{ month_name }}</div>
+      <!-- Donut-style ring -->
+      <div style="display:flex;align-items:center;gap:20px">
+        <div style="position:relative;width:90px;height:90px;flex-shrink:0">
+          <svg viewBox="0 0 36 36" style="width:90px;height:90px;transform:rotate(-90deg)">
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" stroke-width="3.5"/>
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="{% if att_rate >= 80 %}#22c55e{% elif att_rate >= 60 %}#f59e0b{% else %}#ef4444{% endif %}" stroke-width="3.5"
+              stroke-dasharray="{{ att_rate }} {{ 100|add:'-'|add:att_rate|default:'0' }}" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:{% if att_rate >= 80 %}#16a34a{% elif att_rate >= 60 %}#d97706{% else %}#dc2626{% endif %}">{{ att_rate }}%</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--slate-500);margin-bottom:8px">{{ working_days }} working days elapsed</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+            <div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span><span style="color:var(--slate-600)">Present: <strong>{{ present }}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0"></span><span style="color:var(--slate-600)">Absent: <strong>{{ absent }}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0"></span><span style="color:var(--slate-600)">Half Day: <strong>{{ half_day }}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;flex-shrink:0"></span><span style="color:var(--slate-600)">Leave: <strong>{{ leave }}</strong></span></div>
+          </div>
+          {% if total_hrs > 0 %}
+          <div style="margin-top:10px;font-size:12px;color:var(--orange);font-weight:700"><i class="fas fa-clock"></i> {{ total_hrs }}h total worked this month</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming holidays -->
+  <div class="card">
+    <div class="card-body">
+      <div style="font-size:14px;font-weight:800;color:var(--slate-900);margin-bottom:14px">🏖️ Upcoming Holidays</div>
+      {% if upcoming_holidays %}
+      {% for h in upcoming_holidays %}
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--slate-100)">
+        <div style="min-width:38px;height:38px;border-radius:10px;background:var(--orange-pale);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--orange);line-height:1.2">
+          <span>{{ h.date|date:"d" }}</span>
+          <span style="font-size:9px;font-weight:600;color:var(--slate-400)">{{ h.date|date:"M" }}</span>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--slate-800)">{{ h.name }}</div>
+          <div style="font-size:11px;color:var(--slate-400)">{{ h.date|date:"l" }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state" style="padding:20px"><i class="fas fa-umbrella-beach"></i><p>No upcoming holidays</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- 30-day trend -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body">
+    <div style="font-size:14px;font-weight:800;color:var(--slate-900);margin-bottom:14px">📅 Last 30 Days</div>
+    <div style="display:flex;gap:3px;flex-wrap:wrap">
+      {% for i in trend_status %}
+      <div title="{{ trend_labels|slice:forloop.counter0 }}"
+           style="width:22px;height:22px;border-radius:5px;flex-shrink:0;
+           background:{% if i == 'present' %}#dcfce7{% elif i == 'absent' %}#fee2e2{% elif i == 'half_day' %}#fef3c7{% elif i == 'leave' %}#f3e8ff{% elif i == 'holiday' %}#f1f5f9{% else %}#f8fafc{% endif %};
+           border:1.5px solid {% if i == 'present' %}#bbf7d0{% elif i == 'absent' %}#fecaca{% elif i == 'half_day' %}#fde68a{% elif i == 'leave' %}#e9d5ff{% else %}#e2e8f0{% endif %}">
+      </div>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-500)"><span style="width:10px;height:10px;border-radius:3px;background:#dcfce7;border:1px solid #bbf7d0"></span> Present</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-500)"><span style="width:10px;height:10px;border-radius:3px;background:#fee2e2;border:1px solid #fecaca"></span> Absent</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-500)"><span style="width:10px;height:10px;border-radius:3px;background:#fef3c7;border:1px solid #fde68a"></span> Half Day</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-500)"><span style="width:10px;height:10px;border-radius:3px;background:#f3e8ff;border:1px solid #e9d5ff"></span> Leave</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate-500)"><span style="width:10px;height:10px;border-radius:3px;background:#f1f5f9;border:1px solid #e2e8f0"></span> Holiday</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent records -->
+<div class="card">
+  <div class="card-body">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:800;color:var(--slate-900)">🕐 Recent Records</div>
+      <a href="{% url 'portal_attendance' %}" style="font-size:12px;font-weight:600;color:var(--orange);text-decoration:none">View All →</a>
+    </div>
+    {% if recent_atts %}
+    <div class="table-wrap">
+      <table class="dt">
+        <thead><tr><th>Date</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>OT</th></tr></thead>
+        <tbody>
+        {% for att in recent_atts %}
+        <tr>
+          <td style="font-weight:600;color:var(--slate-700)">{{ att.date|date:"d M Y" }}</td>
+          <td>
+            {% if att.status == 'present' %}<span class="badge badge-green">Present</span>
+            {% elif att.status == 'absent' %}<span class="badge badge-red">Absent</span>
+            {% elif att.status == 'half_day' %}<span class="badge badge-yellow">Half Day</span>
+            {% elif att.status == 'leave' %}<span class="badge badge-purple">Leave</span>
+            {% elif att.status == 'holiday' %}<span class="badge badge-gray">Holiday</span>
+            {% endif %}
+          </td>
+          <td>{% if att.in_time %}{{ att.in_time|time:"H:i" }}{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+          <td>{% if att.out_time %}{{ att.out_time|time:"H:i" }}{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+          <td>{% if att.total_hours > 0 %}<span style="font-weight:700;color:var(--orange)">{{ att.total_hours }}h</span>{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+          <td>{% if att.ot_hours > 0 %}<span style="font-weight:700;color:#7c3aed">+{{ att.ot_hours }}h</span>{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No attendance records yet</p></div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

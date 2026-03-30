@@ -1,0 +1,86 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}OT Report{% endblock %}
+{% block page_title %}OT Report{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">⏱️ OT Report — {{ month_name }}</div>
+    <div class="page-header-sub">Total OT: <strong style="color:#7c3aed">{{ grand_total_ot }} hours</strong></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'reports' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Reports</a>
+    <a href="{% url 'report_ot_export' %}?year={{ year }}&month={{ month }}&employee={{ selected_emp }}" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed">
+      <i class="fas fa-file-excel"></i> Export Excel
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:18px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Year</label>
+        <select name="year" class="form-control" style="width:90px;font-size:13px">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Month</label>
+        <select name="month" class="form-control" style="width:130px;font-size:13px">
+          {% for mn, ml in months %}<option value="{{ mn }}" {% if mn == month %}selected{% endif %}>{{ ml }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Employee</label>
+        <select name="employee" class="form-control" style="width:180px;font-size:13px">
+          <option value="">All Employees</option>
+          {% for emp in employees %}<option value="{{ emp.pk }}" {% if emp.pk|stringformat:'s' == selected_emp %}selected{% endif %}>{{ emp.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="font-size:13px"><i class="fas fa-filter"></i> Apply</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if rows %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Employee</th>
+          <th style="text-align:center">OT Days</th>
+          <th style="text-align:center">Total OT Hours</th>
+          <th style="text-align:center">Avg OT / Day</th>
+          <th>OT Dates</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% if row.total_ot > 0 %}
+        <tr>
+          <td style="font-size:11px;color:var(--slate-400);font-weight:600">{{ forloop.counter }}</td>
+          <td>
+            <div style="font-weight:700;color:var(--slate-900);font-size:13px">{{ row.employee.name }}</div>
+            {% if row.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ row.employee.job_title }}</div>{% endif %}
+          </td>
+          <td style="text-align:center"><span class="badge badge-purple" style="font-size:12px">{{ row.ot_days }} days</span></td>
+          <td style="text-align:center;font-size:16px;font-weight:800;color:#7c3aed">{{ row.total_ot }}h</td>
+          <td style="text-align:center;font-weight:600;color:var(--slate-600)">{{ row.avg_ot }}h</td>
+          <td style="font-size:11px;color:var(--slate-500)">
+            {% for rec in row.records %}<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:#f5f3ff;color:#7c3aed;font-weight:600;margin:2px">{{ rec.date|date:"d M" }}</span>{% endfor %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-star"></i><p>No OT records for {{ month_name }}</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

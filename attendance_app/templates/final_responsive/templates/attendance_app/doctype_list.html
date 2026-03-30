@@ -1,0 +1,73 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Document Types{% endblock %}
+{% block page_title %}Document Types{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">🏷️ Document Types</div>
+    <div class="page-header-sub">{{ types|length }} type{{ types|length|pluralize }} defined</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'document_list' %}" class="btn btn-secondary"><i class="fas fa-folder-open"></i> All Documents</a>
+    {% if is_admin %}<a href="{% url 'doctype_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Type</a>{% endif %}
+  </div>
+</div>
+
+{% if not types %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-tags"></i>
+    <p>No document types yet. Create types like Passport, Visa, Emirates ID, Labour Card etc.</p>
+    {% if is_admin %}<a href="{% url 'doctype_add' %}" class="btn btn-primary" style="margin-top:12px"><i class="fas fa-plus"></i> Create First Type</a>{% endif %}
+  </div>
+</div>
+{% else %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+  {% for dt in types %}
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--orange-pale);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas fa-{% if 'passport' in dt.name|lower %}passport{% elif 'visa' in dt.name|lower %}stamp{% elif 'id' in dt.name|lower or 'emirates' in dt.name|lower %}id-card{% elif 'labor' in dt.name|lower or 'labour' in dt.name|lower %}hard-hat{% elif 'license' in dt.name|lower %}car{% else %}file-lines{% endif %}" style="color:var(--orange);font-size:16px"></i>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--slate-900)">{{ dt.name }}</div>
+            <div style="font-size:11px;color:var(--slate-400)">{{ dt.doc_count }} document{{ dt.doc_count|pluralize }}</div>
+          </div>
+        </div>
+        {% if is_admin %}
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <a href="{% url 'doctype_edit' dt.pk %}" class="btn btn-sm btn-outline"><i class="fas fa-pen"></i></a>
+          <form method="post" action="{% url 'doctype_delete' dt.pk %}" onsubmit="return confirm('Delete document type \'{{ dt.name }}\'? This will fail if documents use it.')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca"><i class="fas fa-trash"></i></button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% if dt.description %}<div style="font-size:12px;color:var(--slate-500);margin-bottom:10px">{{ dt.description }}</div>{% endif %}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        {% if dt.requires_expiry %}
+        <span class="badge badge-orange" style="font-size:10px"><i class="fas fa-clock"></i> Expiry required</span>
+        <span class="badge badge-blue" style="font-size:10px"><i class="fas fa-bell"></i> Alert {{ dt.alert_days }}d before</span>
+        {% else %}
+        <span class="badge badge-gray" style="font-size:10px">No expiry tracking</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Default types hint if fresh install -->
+{% if types|length < 3 %}
+<div style="margin-top:20px;padding:14px 18px;border-radius:10px;background:#dbeafe;border:1px solid #bfdbfe;font-size:12px;color:#1d4ed8">
+  <i class="fas fa-lightbulb"></i> <strong>Suggested document types for UAE:</strong>
+  Passport, UAE Residence Visa, Emirates ID, Labour Card, Health Insurance Card, Driving License, Medical Certificate
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

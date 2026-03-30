@@ -1,0 +1,239 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Import Attendance{% endblock %}
+{% block page_title %}Import Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .import-summary-pills{flex-direction:column;}
+  .import-summary-pills>div{width:100%;}
+}
+</style>
+<style>
+.drop-zone {
+  border: 2.5px dashed var(--slate-300); border-radius: 14px;
+  padding: 48px 24px; text-align: center; cursor: pointer;
+  transition: all .2s; background: var(--slate-50);
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
+.drop-zone.has-file { border-color: #16a34a; background: #f0fdf4; }
+.result-section { margin-bottom: 20px; }
+.result-header { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px 10px 0 0; font-size:13px; font-weight:800; }
+.result-table { border:1.5px solid var(--slate-200); border-top:none; border-radius:0 0 10px 10px; overflow:hidden; }
+.err-pill { display:inline-block; padding:2px 8px; border-radius:4px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:600; margin:2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">📅 Import Attendance</div>
+    <div class="page-header-sub">Upload an Excel file to import attendance records in bulk</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'import_attendance_template' %}" class="btn btn-secondary"><i class="fas fa-download"></i> Download Template</a>
+    <a href="{% url 'import_hub' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+{% if not preview %}
+<div class="card" style="max-width:640px;margin:0 auto">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <i class="fas fa-file-excel" style="font-size:40px;color:#2563eb;margin-bottom:14px;display:block" id="dz-icon"></i>
+        <div style="font-size:16px;font-weight:700;color:var(--slate-700)" id="dz-label">Click to choose file or drag & drop here</div>
+        <div style="font-size:12px;color:var(--slate-400);margin-top:6px">Excel files only (.xlsx, .xls)</div>
+        <input type="file" name="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="fileSelected(this)">
+      </div>
+
+      <div id="file-info" style="display:none;margin-top:14px;padding:12px 14px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;align-items:center;gap:10px">
+        <i class="fas fa-file-circle-check" style="color:#16a34a;font-size:18px"></i>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#15803d" id="file-name"></div>
+          <div style="font-size:11px;color:#16a34a" id="file-size"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding:14px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;font-size:12px;color:#1d4ed8">
+        <strong>Required columns:</strong> employee_name, date, status ·
+        <span style="color:#555">Optional: in_time, out_time, ot_hours, notes</span><br>
+        <strong>Employee names must match exactly</strong> — names are case-insensitive
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button type="submit" id="upload-btn" class="btn btn-primary" style="flex:1;justify-content:center;background:#2563eb;border-color:#2563eb" disabled>
+          <i class="fas fa-magnifying-glass"></i> Validate & Preview
+        </button>
+        <a href="{% url 'import_hub' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% else %}
+<!-- Summary badges -->
+<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+  <div style="padding:10px 16px;border-radius:10px;background:#f0fdf4;border:1.5px solid #bbf7d0;display:flex;align-items:center;gap:8px">
+    <i class="fas fa-circle-check" style="color:#16a34a"></i>
+    <span style="font-size:13px;font-weight:700;color:#16a34a">{{ rows_ok|length }} Ready to import</span>
+  </div>
+  {% if rows_dup %}
+  <div style="padding:10px 16px;border-radius:10px;background:#fffbeb;border:1.5px solid #fde68a;display:flex;align-items:center;gap:8px">
+    <i class="fas fa-copy" style="color:#d97706"></i>
+    <span style="font-size:13px;font-weight:700;color:#d97706">{{ rows_dup|length }} Duplicate{{ rows_dup|length|pluralize }}</span>
+  </div>
+  {% endif %}
+  {% if rows_error %}
+  <div style="padding:10px 16px;border-radius:10px;background:#fff5f5;border:1.5px solid #fecaca;display:flex;align-items:center;gap:8px">
+    <i class="fas fa-triangle-exclamation" style="color:#dc2626"></i>
+    <span style="font-size:13px;font-weight:700;color:#dc2626">{{ rows_error|length }} Error{{ rows_error|length|pluralize }} — will be skipped</span>
+  </div>
+  {% endif %}
+</div>
+
+{% if rows_ok or rows_dup %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="confirm" value="1">
+
+  {% if rows_dup %}
+  <div style="margin-bottom:16px;padding:14px 18px;border-radius:10px;background:#fffbeb;border:1.5px solid #fde68a">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" name="overwrite_duplicates" value="1" style="width:16px;height:16px;accent-color:var(--orange)">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#92400e">Overwrite {{ rows_dup|length }} existing record{{ rows_dup|length|pluralize }}</div>
+        <div style="font-size:11px;color:#b45309">Replace attendance records that already exist for the same employee + date. Unchecked = skip duplicates.</div>
+      </div>
+    </label>
+  </div>
+  {% endif %}
+
+  <div style="display:flex;gap:8px;margin-bottom:24px">
+    <button type="submit" class="btn btn-primary" style="background:#2563eb;border-color:#2563eb">
+      <i class="fas fa-circle-check"></i> Confirm Import
+      ({{ rows_ok|length }}{% if rows_dup %} + {{ rows_dup|length }} dup{% endif %} records)
+    </button>
+    <a href="{% url 'import_attendance' %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i> Upload Different File</a>
+  </div>
+</form>
+{% endif %}
+
+<!-- Ready rows -->
+{% if rows_ok %}
+<div class="result-section">
+  <div class="result-header" style="background:#f0fdf4;border:1.5px solid #bbf7d0">
+    <i class="fas fa-circle-check" style="color:#16a34a"></i>
+    <span style="color:#16a34a">{{ rows_ok|length }} Rows Ready to Import</span>
+  </div>
+  <div class="result-table">
+    <table class="data-table">
+      <thead><tr><th>Row</th><th>Employee</th><th>Date</th><th style="text-align:center">Status</th><th style="text-align:center">In</th><th style="text-align:center">Out</th><th style="text-align:center">OT</th><th>Notes</th></tr></thead>
+      <tbody>
+        {% for r in rows_ok %}
+        <tr>
+          <td style="font-size:11px;color:var(--slate-400)">{{ r.row }}</td>
+          <td style="font-weight:700">{{ r.emp_name }}</td>
+          <td style="font-size:12px;font-weight:600">{{ r.date }}</td>
+          <td style="text-align:center">
+            {% if r.status == 'present' %}<span class="badge badge-green" style="font-size:10px">Present</span>
+            {% elif r.status == 'absent' %}<span class="badge badge-red" style="font-size:10px">Absent</span>
+            {% elif r.status == 'half_day' %}<span class="badge badge-yellow" style="font-size:10px">Half Day</span>
+            {% elif r.status == 'holiday' %}<span class="badge badge-orange" style="font-size:10px">Holiday</span>
+            {% elif r.status == 'leave' %}<span class="badge badge-purple" style="font-size:10px">Leave</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;font-size:12px;color:#16a34a">{{ r.in_time|default:"—" }}</td>
+          <td style="text-align:center;font-size:12px;color:#2563eb">{{ r.out_time|default:"—" }}</td>
+          <td style="text-align:center;font-size:12px;color:#7c3aed">{% if r.ot_hours %}{{ r.ot_hours }}h{% else %}—{% endif %}</td>
+          <td style="font-size:11px;color:var(--slate-500)">{{ r.notes|default:"" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Duplicates -->
+{% if rows_dup %}
+<div class="result-section">
+  <div class="result-header" style="background:#fffbeb;border:1.5px solid #fde68a">
+    <i class="fas fa-copy" style="color:#d97706"></i>
+    <span style="color:#d97706">{{ rows_dup|length }} Duplicate{{ rows_dup|length|pluralize }} (record already exists for same employee + date)</span>
+  </div>
+  <div class="result-table">
+    <table class="data-table">
+      <thead><tr><th>Row</th><th>Employee</th><th>Date</th><th style="text-align:center">New Status</th><th style="text-align:center">Existing Status</th></tr></thead>
+      <tbody>
+        {% for r in rows_dup %}
+        <tr style="background:#fffbeb">
+          <td style="font-size:11px;color:var(--slate-400)">{{ r.row }}</td>
+          <td style="font-weight:700;color:#d97706">{{ r.emp_name }}</td>
+          <td style="font-size:12px;font-weight:600">{{ r.date }}</td>
+          <td style="text-align:center"><span class="badge badge-blue" style="font-size:10px">{{ r.status }}</span></td>
+          <td style="text-align:center"><span class="badge badge-gray" style="font-size:10px">{{ r.existing_status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Errors -->
+{% if rows_error %}
+<div class="result-section">
+  <div class="result-header" style="background:#fff5f5;border:1.5px solid #fecaca">
+    <i class="fas fa-triangle-exclamation" style="color:#dc2626"></i>
+    <span style="color:#dc2626">{{ rows_error|length }} Row{{ rows_error|length|pluralize }} with Errors — will be skipped</span>
+  </div>
+  <div class="result-table">
+    <table class="data-table">
+      <thead><tr><th>Row</th><th>Employee</th><th>Date</th><th>Errors</th></tr></thead>
+      <tbody>
+        {% for r in rows_error %}
+        <tr style="background:#fff5f5">
+          <td style="font-size:11px;color:#dc2626;font-weight:700">Row {{ r.row }}</td>
+          <td style="font-weight:600;color:var(--slate-700)">{{ r.emp_name|default:"(empty)" }}</td>
+          <td style="font-size:12px">{{ r.date|default:"—" }}</td>
+          <td>{% for e in r.errors %}<span class="err-pill">{{ e }}</span>{% endfor %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var dz = document.getElementById('drop-zone');
+if (dz) {
+  dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', function() { dz.classList.remove('drag-over'); });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    var f = e.dataTransfer.files[0];
+    if (f) { document.getElementById('file-input').files = e.dataTransfer.files; fileSelected({files:[f]}); }
+  });
+}
+
+function fileSelected(input) {
+  var f = input.files ? input.files[0] : input;
+  if (!f) return;
+  var dz = document.getElementById('drop-zone');
+  dz.classList.add('has-file');
+  document.getElementById('dz-label').textContent = f.name;
+  document.getElementById('dz-icon').style.color = '#16a34a';
+  document.getElementById('upload-btn').disabled = false;
+  var info = document.getElementById('file-info');
+  if (info) { info.style.display = 'flex'; document.getElementById('file-name').textContent = f.name; document.getElementById('file-size').textContent = (f.size/1024).toFixed(1) + ' KB'; }
+}
+</script>
+{% endblock %}

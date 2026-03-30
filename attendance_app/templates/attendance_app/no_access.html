@@ -1,0 +1,11 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Access Denied{% endblock %}
+{% block page_title %}Access Denied{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:60px auto;text-align:center">
+  <div style="font-size:64px;margin-bottom:16px">🔒</div>
+  <h2 style="font-size:22px;font-weight:800;color:var(--slate-900);margin-bottom:8px">Access Denied</h2>
+  <p style="color:var(--slate-500);margin-bottom:24px">You don't have permission to access this page. Contact your administrator.</p>
+  <a href="{% url 'logout' %}" class="btn btn-secondary"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+{% endblock %}

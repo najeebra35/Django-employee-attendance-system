@@ -1,0 +1,92 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Holidays{% endblock %}
+{% block page_title %}Holiday Management{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Holidays</div>
+    <div class="page-header-sub">Manage public holidays and Sundays</div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if 'holiday_add' in user_perms or is_admin %}
+    <a href="{% url 'holiday_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Holiday</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Year Filter + Generate Sundays -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <form method="get" style="display:flex;align-items:center;gap:10px">
+      <label class="form-label" style="margin:0">Year:</label>
+      <select name="year" class="form-control" style="width:120px" onchange="this.form.submit()">
+        {% for y in years %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if 'holiday_add' in user_perms or is_admin %}
+    <form method="post" action="{% url 'generate_sundays' %}" style="display:flex;align-items:center;gap:10px">
+      {% csrf_token %}
+      <input type="hidden" name="year" value="{{ year }}">
+      <button type="submit" class="btn btn-outline" onclick="return confirm('Generate all Sunday holidays for {{ year }}?')">
+        <i class="fas fa-rotate"></i> Auto-Generate Sundays for {{ year }}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">{{ holidays.count }} Holiday{{ holidays.count|pluralize }} in {{ year }}</span>
+  </div>
+  <div class="table-wrap">
+    {% if holidays %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Holiday Name</th>
+          <th>Date</th>
+          <th>Day</th>
+          <th>Type</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in holidays %}
+        <tr>
+          <td class="text-muted" style="font-size:12px">{{ forloop.counter }}</td>
+          <td style="font-weight:600">{{ h.name }}</td>
+          <td>{{ h.date|date:"d M Y" }}</td>
+          <td>{{ h.date|date:"l" }}</td>
+          <td>
+            <span class="badge {% if h.holiday_type == 'public' %}badge-orange{% else %}badge-blue{% endif %}">
+              {{ h.get_holiday_type_display }}
+            </span>
+          </td>
+          <td>
+            {% if 'holiday_add' in user_perms or is_admin %}
+            <form method="post" action="{% url 'holiday_delete' h.pk %}" style="display:inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete {{ h.name }}?')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-umbrella-beach"></i>
+      <p>No holidays for {{ year }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

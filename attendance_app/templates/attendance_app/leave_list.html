@@ -1,0 +1,83 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Leave Requests{% endblock %}
+{% block page_title %}Leave Management{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-title">Leave Requests</div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'leave_type_list' %}" class="btn btn-outline"><i class="fas fa-list"></i> Leave Types</a>
+    <a href="{% url 'leave_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Request</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="get" style="display:flex;gap:10px;align-items:center">
+      <label class="form-label" style="margin:0">Status:</label>
+      <select name="status" class="form-control" style="width:180px" onchange="this.form.submit()">
+        <option value="">All</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if leaves %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Leave Type</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Days</th>
+          <th>Status</th>
+          <th>Applied On</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leaves %}
+        <tr>
+          <td style="font-weight:600">{{ lr.employee.name }}</td>
+          <td>{{ lr.leave_type.name }}</td>
+          <td>{{ lr.start_date|date:"d M Y" }}</td>
+          <td>{{ lr.end_date|date:"d M Y" }}</td>
+          <td><span class="badge badge-orange">{{ lr.total_days }}</span></td>
+          <td>
+            <span class="badge {% if lr.status == 'approved' %}badge-green{% elif lr.status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+              {{ lr.get_status_display }}
+            </span>
+          </td>
+          <td class="text-muted" style="font-size:12px">{{ lr.applied_on|date:"d M Y" }}</td>
+          <td>
+            {% if lr.status == 'pending' and 'leave_manage' in user_perms or is_admin %}
+            <div class="actions-row">
+              <form method="post" action="{% url 'leave_approve' lr.pk %}" style="display:inline">{% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i> Approve</button>
+              </form>
+              <form method="post" action="{% url 'leave_reject' lr.pk %}" style="display:inline">{% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-xmark"></i> Reject</button>
+              </form>
+            </div>
+            {% else %}
+            <span class="text-muted" style="font-size:12px">
+              {% if lr.reviewed_by %}by {{ lr.reviewed_by.username }}{% endif %}
+            </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-plane"></i><p>No leave requests</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

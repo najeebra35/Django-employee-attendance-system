@@ -1,0 +1,73 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Reports & Analytics</div>
+    <div class="page-header-sub">Select a report type to view and export</div>
+  </div>
+</div>
+
+<!-- Overview Stats -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
+  <div style="background:white;border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--slate-200);display:flex;align-items:center;gap:14px">
+    <div style="width:46px;height:46px;border-radius:12px;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:20px;color:#16a34a;flex-shrink:0"><i class="fas fa-users"></i></div>
+    <div><div style="font-size:26px;font-weight:800;color:var(--slate-900)">{{ total_emp }}</div><div style="font-size:12px;color:var(--slate-500);font-weight:600">Active Employees</div></div>
+  </div>
+  <div style="background:white;border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--slate-200);display:flex;align-items:center;gap:14px">
+    <div style="width:46px;height:46px;border-radius:12px;background:var(--orange-pale);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--orange);flex-shrink:0"><i class="fas fa-circle-check"></i></div>
+    <div><div style="font-size:26px;font-weight:800;color:var(--slate-900)">{{ month_present }}</div><div style="font-size:12px;color:var(--slate-500);font-weight:600">Present This Month</div></div>
+  </div>
+  <div style="background:white;border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--slate-200);display:flex;align-items:center;gap:14px">
+    <div style="width:46px;height:46px;border-radius:12px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:20px;color:#dc2626;flex-shrink:0"><i class="fas fa-circle-xmark"></i></div>
+    <div><div style="font-size:26px;font-weight:800;color:var(--slate-900)">{{ month_absent }}</div><div style="font-size:12px;color:var(--slate-500);font-weight:600">Absent This Month</div></div>
+  </div>
+  <div style="background:white;border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--slate-200);display:flex;align-items:center;gap:14px">
+    <div style="width:46px;height:46px;border-radius:12px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:20px;color:#7c3aed;flex-shrink:0"><i class="fas fa-star"></i></div>
+    <div><div style="font-size:26px;font-weight:800;color:var(--slate-900)">{{ month_ot }}</div><div style="font-size:12px;color:var(--slate-500);font-weight:600">OT Hours This Month</div></div>
+  </div>
+</div>
+
+<!-- Report Cards -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <a href="{% url 'report_monthly' %}" style="text-decoration:none">
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200);transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='#f97316';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform=''">
+      <div style="width:56px;height:56px;border-radius:16px;background:var(--orange-pale);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px">📋</div>
+      <div style="font-size:17px;font-weight:800;color:var(--slate-900);margin-bottom:6px">Monthly Summary</div>
+      <div style="font-size:13px;color:var(--slate-500);line-height:1.6">Employee-wise monthly attendance breakdown — present, absent, half day, leave, OT hours and attendance rate per employee.</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--orange);display:flex;align-items:center;gap:4px">View Report <i class="fas fa-arrow-right"></i></div>
+    </div>
+  </a>
+
+  <a href="{% url 'report_ot' %}" style="text-decoration:none">
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200);transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='#7c3aed';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform=''">
+      <div style="width:56px;height:56px;border-radius:16px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px">⏱️</div>
+      <div style="font-size:17px;font-weight:800;color:var(--slate-900);margin-bottom:6px">OT Report</div>
+      <div style="font-size:13px;color:var(--slate-500);line-height:1.6">Overtime hours per employee — total OT days, total hours, average OT per day, sorted by highest OT.</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:700;color:#7c3aed;display:flex;align-items:center;gap:4px">View Report <i class="fas fa-arrow-right"></i></div>
+    </div>
+  </a>
+
+  <a href="{% url 'report_absent' %}" style="text-decoration:none">
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200);transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='#dc2626';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform=''">
+      <div style="width:56px;height:56px;border-radius:16px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px">🔴</div>
+      <div style="font-size:17px;font-weight:800;color:var(--slate-900);margin-bottom:6px">Absent Frequency</div>
+      <div style="font-size:13px;color:var(--slate-500);line-height:1.6">Who is absent most — absent days, leave days, absence rate % per employee, sorted by highest absences.</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:700;color:#dc2626;display:flex;align-items:center;gap:4px">View Report <i class="fas fa-arrow-right"></i></div>
+    </div>
+  </a>
+
+  <a href="{% url 'report_late' %}" style="text-decoration:none">
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:var(--shadow);border:2px solid var(--slate-200);transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='#d97706';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform=''">
+      <div style="width:56px;height:56px;border-radius:16px;background:#fef9c3;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px">🕐</div>
+      <div style="font-size:17px;font-weight:800;color:var(--slate-900);margin-bottom:6px">Late Arrivals</div>
+      <div style="font-size:13px;color:var(--slate-500);line-height:1.6">Employees arriving after default in-time — late days, total delay minutes, average delay, configurable threshold.</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:700;color:#d97706;display:flex;align-items:center;gap:4px">View Report <i class="fas fa-arrow-right"></i></div>
+    </div>
+  </a>
+
+</div>
+{% endblock %}

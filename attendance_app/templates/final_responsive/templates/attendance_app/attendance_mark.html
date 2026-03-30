@@ -1,0 +1,300 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Mark Attendance{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .mark-grid{grid-template-columns:1fr!important;}
+  .time-controls{flex-direction:column;}
+  .time-controls .btn{width:100%;justify-content:center;}
+  .emp-row{flex-direction:column;align-items:flex-start;gap:8px;}
+  .emp-row .actions{width:100%;display:flex;gap:6px;}
+  .emp-row .actions .btn{flex:1;justify-content:center;}
+}
+</style>
+<style>
+.nav-btn {
+  width:34px;height:34px;border-radius:8px;border:1.5px solid var(--slate-200);
+  background:white;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;color:var(--slate-600);font-size:13px;
+  text-decoration:none;
+}
+.nav-btn:hover { background:var(--orange);border-color:var(--orange);color:white; }
+.progress-bar-track { height:6px;border-radius:3px;background:var(--slate-100);overflow:hidden; }
+.progress-bar-fill  { height:100%;border-radius:3px;background:var(--orange);transition:width .4s; }
+.default-time-pill {
+  font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;
+  background:var(--orange-pale);color:var(--orange-dark);border:1px solid var(--orange-light);
+  cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+}
+.default-time-pill:hover { background:var(--orange-light); }
+.tr-present  { background:rgba(240,253,244,.6) !important; }
+.tr-absent   { background:rgba(254,242,242,.6) !important; }
+.tr-half_day { background:rgba(255,251,235,.6) !important; }
+.tr-holiday  { background:rgba(238,242,255,.6) !important; }
+.tr-leave    { background:rgba(245,243,255,.6) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Mark Attendance</div>
+    <div class="page-header-sub">
+      {{ selected_date|date:"l, d F Y" }}
+      {% if is_holiday %}<span class="badge badge-purple" style="font-size:11px;margin-left:8px"><i class="fas fa-umbrella-beach"></i> {{ is_holiday.name }}</span>{% endif %}
+      {% if is_sunday %}<span class="badge badge-blue" style="font-size:11px;margin-left:8px"><i class="fas fa-moon"></i> Sunday</span>{% endif %}
+    </div>
+  </div>
+  <a href="{% url 'attendance_list' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-secondary">
+    <i class="fas fa-eye"></i> View Records
+  </a>
+</div>
+
+<!-- Date Navigation + Progress -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <a href="?date={{ prev_date|date:'Y-m-d' }}" class="nav-btn" title="Previous Day">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+      <form method="get" style="display:flex;align-items:center;gap:8px">
+        <i class="fas fa-calendar-day" style="color:var(--orange);font-size:14px"></i>
+        <input type="date" name="date" class="form-control" style="width:175px;font-size:13px"
+          value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+      </form>
+      <a href="?date={{ next_date|date:'Y-m-d' }}" class="nav-btn" title="Next Day">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+      <a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-sm {% if selected_date == today %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size:12px">Today</a>
+
+      <!-- Progress indicator -->
+      <div style="margin-left:auto;text-align:right;min-width:180px">
+        <div style="font-size:12px;color:var(--slate-500);margin-bottom:4px;font-weight:600">
+          Marked: <span style="color:var(--orange)">{{ marked_count }}</span> / {{ total_count }} employees
+        </div>
+        <div class="progress-bar-track">
+          {% if total_count > 0 %}
+          <div class="progress-bar-fill" style="width:{% widthratio marked_count total_count 100 %}%"></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Default time setter row -->
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--slate-100);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--slate-500)"><i class="fas fa-clock" style="color:var(--orange)"></i> Set default times for all present:</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="time" id="default-in" class="form-control" style="width:120px;font-size:12px" value="07:00">
+        <span style="color:var(--slate-400);font-size:12px">→</span>
+        <input type="time" id="default-out" class="form-control" style="width:120px;font-size:12px" value="17:00">
+        <button type="button" onclick="applyDefaultTimes()" class="btn btn-sm btn-secondary" style="font-size:12px;white-space:nowrap">
+          <i class="fas fa-bolt"></i> Apply to Present
+        </button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button type="button" onclick="markAll('present')" class="btn btn-sm btn-success">
+          <i class="fas fa-check-double"></i> All Present
+        </button>
+        <button type="button" onclick="markAll('absent')" class="btn btn-sm btn-danger">
+          <i class="fas fa-xmark"></i> All Absent
+        </button>
+        {% if is_holiday or is_sunday %}
+        <button type="button" onclick="markAll('holiday')" class="btn btn-sm btn-secondary">
+          <i class="fas fa-umbrella-beach"></i> All Holiday
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if employee_data %}
+<form method="post" action="{% url 'attendance_save' %}" id="att-form">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        <i class="fas fa-users" style="color:var(--orange)"></i>
+        {{ selected_date|date:"l, d F Y" }} — {{ employee_data|length }} Active Employee{{ employee_data|length|pluralize }}
+      </span>
+      <span style="font-size:12px;color:var(--slate-400)">Sorted alphabetically</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="mark-table">
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th>Employee</th>
+            <th style="width:155px">Status</th>
+            <th style="width:115px">
+              In Time
+              <span class="default-time-pill" onclick="applyDefaultTimes()" title="Apply default time">
+                <i class="fas fa-bolt"></i> Apply
+              </span>
+            </th>
+            <th style="width:115px">Out Time</th>
+            <th style="width:95px">OT Hours</th>
+            <th style="width:85px">Yesterday</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in employee_data %}
+          <tr id="row-{{ item.employee.pk }}" class="att-row {% if item.attendance %}tr-{{ item.attendance.status }}{% else %}tr-absent{% endif %}">
+            <td style="font-size:11px;font-weight:600;color:var(--slate-400)">{{ forloop.counter }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                {% if item.employee.photo %}
+                <img src="{{ item.employee.photo.url }}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0">
+                {% else %}
+                <div style="width:34px;height:34px;border-radius:8px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--orange-dark);font-size:14px;flex-shrink:0">
+                  {{ item.employee.name|first|upper }}
+                </div>
+                {% endif %}
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:var(--slate-900)">{{ item.employee.name }}</div>
+                  {% if item.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ item.employee.job_title }}</div>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <select name="status_{{ item.employee.pk }}" class="form-control status-select"
+                data-empid="{{ item.employee.pk }}" onchange="handleStatusChange(this)" style="font-size:12px">
+                <option value="present" {% if item.attendance and item.attendance.status == 'present' %}selected{% elif not item.attendance %}selected{% endif %}>✅ Present</option>
+                <option value="absent"   {% if item.attendance and item.attendance.status == 'absent'   %}selected{% endif %}>❌ Absent</option>
+                <option value="half_day" {% if item.attendance and item.attendance.status == 'half_day' %}selected{% endif %}>⚡ Half Day</option>
+                <option value="holiday"  {% if item.attendance and item.attendance.status == 'holiday'  %}selected{% endif %}>🏖 Holiday</option>
+                <option value="leave"    {% if item.attendance and item.attendance.status == 'leave'    %}selected{% endif %}>✈️ On Leave</option>
+              </select>
+            </td>
+            <td>
+              <input type="time" name="in_time_{{ item.employee.pk }}"
+                class="form-control time-field in-time" style="font-size:12px"
+                value="{% if item.attendance and item.attendance.in_time %}{{ item.attendance.in_time|time:'H:i' }}{% endif %}">
+            </td>
+            <td>
+              <input type="time" name="out_time_{{ item.employee.pk }}"
+                class="form-control time-field out-time" style="font-size:12px"
+                value="{% if item.attendance and item.attendance.out_time %}{{ item.attendance.out_time|time:'H:i' }}{% endif %}">
+            </td>
+            <td>
+              <input type="number" name="ot_{{ item.employee.pk }}" class="form-control" min="0" max="24" step="0.5"
+                style="font-size:12px" placeholder="0.0"
+                value="{% if item.attendance %}{{ item.attendance.ot_hours }}{% else %}0{% endif %}">
+            </td>
+            <td style="font-size:11px;color:var(--slate-400);text-align:center">
+              {% if item.prev_attendance %}
+              <span class="badge {% if item.prev_attendance.status == 'present' %}badge-green{% elif item.prev_attendance.status == 'absent' %}badge-red{% elif item.prev_attendance.status == 'half_day' %}badge-yellow{% elif item.prev_attendance.status == 'leave' %}badge-purple{% else %}badge-blue{% endif %}" style="font-size:10px">
+                {{ item.prev_attendance.get_status_display }}
+              </span>
+              {% else %}
+              <span style="color:var(--slate-200)">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Live counter row -->
+    <div style="padding:12px 20px;border-top:1px solid var(--slate-100);background:var(--orange-pale);display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div style="font-size:12px;font-weight:600;color:var(--slate-600)">Live Count:</div>
+      <span id="count-present" style="font-size:12px;font-weight:700;color:#16a34a">✅ Present: 0</span>
+      <span id="count-absent"  style="font-size:12px;font-weight:700;color:#dc2626">❌ Absent: 0</span>
+      <span id="count-half"    style="font-size:12px;font-weight:700;color:#d97706">⚡ Half: 0</span>
+      <span id="count-leave"   style="font-size:12px;font-weight:700;color:#7c3aed">✈️ Leave: 0</span>
+      <span id="count-holiday" style="font-size:12px;font-weight:700;color:#6366f1">🏖 Holiday: 0</span>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Attendance</button>
+        <a href="{% url 'attendance_list' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-secondary">
+          <i class="fas fa-eye"></i> View
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-users" style="font-size:48px;color:var(--slate-200)"></i>
+    <p style="color:var(--slate-400)">No active employees found</p>
+    <a href="{% url 'employee_add' %}" class="btn btn-primary" style="margin-top:16px">
+      <i class="fas fa-user-plus"></i> Add Employee
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var STATUS_COLORS = {
+  'present':  'rgba(240,253,244,.6)',
+  'absent':   'rgba(254,242,242,.6)',
+  'half_day': 'rgba(255,251,235,.6)',
+  'holiday':  'rgba(238,242,255,.6)',
+  'leave':    'rgba(245,243,255,.6)',
+};
+
+function handleStatusChange(select) {
+  var empId = select.dataset.empid;
+  var row = document.getElementById('row-' + empId);
+  var status = select.value;
+  var timeFields = row.querySelectorAll('.time-field');
+  var isTimeRelevant = (status === 'present' || status === 'half_day');
+
+  timeFields.forEach(function(f) {
+    f.style.opacity = isTimeRelevant ? '1' : '.35';
+    f.disabled = !isTimeRelevant;
+  });
+
+  row.style.background = STATUS_COLORS[status] || '';
+  updateLiveCounts();
+}
+
+function markAll(status) {
+  document.querySelectorAll('.status-select').forEach(function(s) {
+    s.value = status;
+    handleStatusChange(s);
+  });
+}
+
+function applyDefaultTimes() {
+  var inVal  = document.getElementById('default-in').value;
+  var outVal = document.getElementById('default-out').value;
+  document.querySelectorAll('.status-select').forEach(function(s) {
+    if (s.value === 'present' || s.value === 'half_day') {
+      var row = document.getElementById('row-' + s.dataset.empid);
+      var inField  = row.querySelector('.in-time');
+      var outField = row.querySelector('.out-time');
+      if (inField  && !inField.disabled  && !inField.value)  inField.value  = inVal;
+      if (outField && !outField.disabled && !outField.value) outField.value = outVal;
+    }
+  });
+}
+
+function updateLiveCounts() {
+  var counts = {present:0, absent:0, half_day:0, leave:0, holiday:0};
+  document.querySelectorAll('.status-select').forEach(function(s) {
+    counts[s.value] = (counts[s.value] || 0) + 1;
+  });
+  document.getElementById('count-present').textContent = '✅ Present: ' + (counts['present'] || 0);
+  document.getElementById('count-absent').textContent  = '❌ Absent: '  + (counts['absent']  || 0);
+  document.getElementById('count-half').textContent    = '⚡ Half: '    + (counts['half_day']|| 0);
+  document.getElementById('count-leave').textContent   = '✈️ Leave: '  + (counts['leave']   || 0);
+  document.getElementById('count-holiday').textContent = '🏖 Holiday: ' + (counts['holiday'] || 0);
+}
+
+// Init on page load
+document.querySelectorAll('.status-select').forEach(function(s) {
+  handleStatusChange(s);
+});
+updateLiveCounts();
+</script>
+{% endblock %}
