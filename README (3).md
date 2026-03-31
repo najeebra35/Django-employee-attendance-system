@@ -127,8 +127,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 👤 Author
 
-**Najeeb Rahman**
-- GitHub: [@najeebra35](https://github.com/najeebra35)
+**Your Name**
+- GitHub: [@your-username](https://github.com/your-username)
 
 ---
 
