@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-attendance-system-change-in-production-2024'
 DEBUG = True
-ALLOWED_HOSTS = ['www.alhafizfiberglass.com', 'alhafizfiberglass.com', '*.alhafizfiberglass.com', '127.0.0.1']
+ALLOWED_HOSTS = ['127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -83,4 +83,4 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 
 
-OPENROUTER_API_KEY = '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'
+OPENROUTER_API_KEY = 'your-api'
