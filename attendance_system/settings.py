@@ -80,11 +80,11 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # Company details (update with real info)
-COMPANY_NAME = "AL HAFIZ FIBERGLASS INDUTSRIES LLC"
-COMPANY_ADDRESS = "Al Jurf Industrial Area 2,Po Box:8190, Ajman, UAE"
-COMPANY_PHONE = "+971 54 390 3660"
-COMPANY_EMAIL = "info@alhafizfiberglass.com"
+COMPANY_NAME = "company-name"
+COMPANY_ADDRESS = "company-address"
+COMPANY_PHONE = "+971 54 000 0000"
+COMPANY_EMAIL = "info@example.com"
 
 
-OPENROUTER_API_KEY = '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'
+OPENROUTER_API_KEY = 'api-key'
 EXTERNAL_API_KEY = 'put-a-long-random-secret-here'
