@@ -1,0 +1,184 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Export Attendance{% endblock %}
+{% block page_title %}Export Attendance{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Export Attendance Report</div>
+    <div class="page-header-sub">Select month, employees and date range then export</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="gap:24px">
+  <!-- Step 1: Select Month -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><span style="background:var(--orange);color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:8px">1</span> Select Month</span>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <select id="sel-month" class="form-control">
+          {% for num, name in months %}
+          <option value="{{ num }}" {% if num == today.month %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <select id="sel-year" class="form-control">
+          {% for y in years %}
+          <option value="{{ y }}" {% if y == today.year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary w-100" onclick="loadEmployees()"><i class="fas fa-search"></i> Load Employees</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Select Employees -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><span style="background:var(--orange);color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:8px">2</span> Select Employees</span>
+    </div>
+    <div class="card-body">
+      <div id="emp-loading" style="display:none;text-align:center;padding:20px;color:var(--slate-400)">
+        <i class="fas fa-spinner fa-spin"></i> Loading...
+      </div>
+      <div id="emp-list" style="display:none">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <span class="text-muted" id="emp-count"></span>
+          <div style="display:flex;gap:8px">
+            <button onclick="selectAll(true)" class="btn btn-sm btn-outline">All</button>
+            <button onclick="selectAll(false)" class="btn btn-sm btn-outline">None</button>
+          </div>
+        </div>
+        <div id="emp-checkboxes" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--slate-200);border-radius:8px;padding:10px"></div>
+      </div>
+      <div id="emp-empty" style="display:none" class="empty-state" style="padding:20px">
+        <i class="fas fa-users"></i>
+        <p>No employees attended this month</p>
+      </div>
+      <div id="emp-placeholder" class="text-muted" style="text-align:center;padding:30px;color:var(--slate-300)">
+        <i class="fas fa-arrow-left" style="font-size:24px;margin-bottom:8px;display:block"></i>
+        Select month and click Load Employees
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 3: Date Range & Export -->
+<div class="card mt-2" style="margin-top:20px" id="export-section" style="display:none">
+  <div class="card-header">
+    <span class="card-title"><span style="background:var(--orange);color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:8px">3</span> Date Range & Export</span>
+  </div>
+  <div class="card-body">
+    <div class="grid grid-2" style="margin-bottom:20px">
+      <div class="form-group">
+        <label class="form-label">From Date</label>
+        <input type="date" id="date-from" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">To Date</label>
+        <input type="date" id="date-to" class="form-control">
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <button onclick="doExport('pdf')" class="btn btn-primary" style="background:#ef4444">
+        <i class="fas fa-file-pdf"></i> Export PDF
+      </button>
+      <button onclick="doExport('excel')" class="btn btn-primary" style="background:#16a34a">
+        <i class="fas fa-file-excel"></i> Export Excel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden forms -->
+<form id="pdf-form" method="post" action="{% url 'export_pdf' %}" style="display:none">{% csrf_token %}
+  <input type="hidden" name="year" id="f-year">
+  <input type="hidden" name="month" id="f-month">
+  <input type="hidden" name="date_from" id="f-from">
+  <input type="hidden" name="date_to" id="f-to">
+  <div id="f-employees-pdf"></div>
+</form>
+
+<form id="excel-form" method="post" action="{% url 'export_excel' %}" style="display:none">{% csrf_token %}
+  <input type="hidden" name="year" id="f-year2">
+  <input type="hidden" name="month" id="f-month2">
+  <input type="hidden" name="date_from" id="f-from2">
+  <input type="hidden" name="date_to" id="f-to2">
+  <div id="f-employees-excel"></div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let loadedEmployees = [];
+
+async function loadEmployees() {
+  const month = document.getElementById('sel-month').value;
+  const year = document.getElementById('sel-year').value;
+
+  document.getElementById('emp-placeholder').style.display = 'none';
+  document.getElementById('emp-list').style.display = 'none';
+  document.getElementById('emp-empty').style.display = 'none';
+  document.getElementById('emp-loading').style.display = 'block';
+
+  const res = await fetch(`/export/employees/?month=${month}&year=${year}`);
+  const data = await res.json();
+  loadedEmployees = data.employees;
+
+  document.getElementById('emp-loading').style.display = 'none';
+
+  if (loadedEmployees.length === 0) {
+    document.getElementById('emp-empty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('emp-count').textContent = `${loadedEmployees.length} employees found`;
+  const box = document.getElementById('emp-checkboxes');
+  box.innerHTML = loadedEmployees.map(e => `
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;transition:background .15s" 
+           onmouseover="this.style.background='var(--orange-pale)'" onmouseout="this.style.background=''">
+      <input type="checkbox" value="${e.id}" checked style="accent-color:var(--orange);width:15px;height:15px">
+      <span style="font-size:13.5px;font-weight:500">${e.name}</span>
+    </label>
+  `).join('');
+
+  document.getElementById('emp-list').style.display = 'block';
+
+  // Set default dates for selected month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  document.getElementById('date-from').value = `${year}-${String(month).padStart(2,'0')}-01`;
+  document.getElementById('date-to').value = `${year}-${String(month).padStart(2,'0')}-${String(daysInMonth).padStart(2,'0')}`;
+  document.getElementById('export-section').style.display = 'block';
+}
+
+function selectAll(val) {
+  document.querySelectorAll('#emp-checkboxes input').forEach(c => c.checked = val);
+}
+
+function doExport(type) {
+  const month = document.getElementById('sel-month').value;
+  const year = document.getElementById('sel-year').value;
+  const from = document.getElementById('date-from').value;
+  const to = document.getElementById('date-to').value;
+  const selected = [...document.querySelectorAll('#emp-checkboxes input:checked')].map(c => c.value);
+
+  if (selected.length === 0) { alert('Please select at least one employee.'); return; }
+
+  const suffix = type === 'pdf' ? '' : '2';
+  document.getElementById('f-year' + suffix).value = year;
+  document.getElementById('f-month' + suffix).value = month;
+  document.getElementById('f-from' + suffix).value = from;
+  document.getElementById('f-to' + suffix).value = to;
+
+  const container = document.getElementById(`f-employees-${type}`);
+  container.innerHTML = selected.map(id => `<input type="hidden" name="employees" value="${id}">`).join('');
+
+  document.getElementById(`${type}-form`).submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ action }} Temporary Worker{% endblock %}
+{% block page_title %}{{ action }} Temporary Worker{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{{ action }} Temporary Worker</div>
+  </div>
+  <a href="{% url 'temp_employee_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:600px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Name <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" required value="{{ worker.name|default:form_data.name|default:'' }}">
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Designation / Role</label>
+          <input type="text" name="designation" class="form-control" placeholder="e.g. Helper, Welder" value="{{ worker.designation|default:form_data.designation|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile</label>
+          <input type="text" name="mobile" class="form-control" value="{{ worker.mobile|default:form_data.mobile|default:'' }}">
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Hourly Rate (AED)</label>
+          <input type="number" step="0.01" name="hourly_rate" class="form-control" placeholder="Optional" value="{{ worker.hourly_rate|default:form_data.hourly_rate|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-control">
+            <option value="active" {% if worker.status == 'active' or not worker %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if worker.status == 'inactive' %}selected{% endif %}>Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="Optional">{{ worker.notes|default:form_data.notes|default:'' }}</textarea>
+      </div>
+
+      <div class="divider"></div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

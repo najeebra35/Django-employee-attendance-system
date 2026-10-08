@@ -1,0 +1,221 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Edit Attendance{% endblock %}
+{% block page_title %}Edit Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .edit-grid{grid-template-columns:1fr!important;}
+}
+</style>
+<style>
+.time-preview {
+  font-size:13px;font-weight:700;color:var(--orange);
+  padding:4px 0;display:inline-block;min-width:60px;
+}
+.status-card {
+  padding:14px;border-radius:10px;border:2px solid var(--slate-200);
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;
+}
+.status-card:hover { border-color:var(--orange); }
+.status-card.selected { border-color:var(--orange);background:var(--orange-pale); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Edit Attendance</div>
+    <div class="page-header-sub">{{ att.employee.name }} — {{ att.date|date:"l, d F Y" }}</div>
+  </div>
+  <a href="{{ return_url }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back
+  </a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
+
+  <!-- Main form card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        {% if att.employee.photo %}
+        <img src="{{ att.employee.photo.url }}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;vertical-align:middle;margin-right:6px">
+        {% else %}
+        <span style="width:32px;height:32px;border-radius:8px;background:var(--orange-light);display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:var(--orange-dark);font-size:13px;vertical-align:middle;margin-right:6px">{{ att.employee.name|first|upper }}</span>
+        {% endif %}
+        {{ att.employee.name }}
+      </span>
+      <span class="badge badge-blue">{{ att.date|date:"d M Y" }}</span>
+    </div>
+
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="return_url" value="{{ return_url }}">
+
+        <!-- Status selection -->
+        <div class="form-group">
+          <label class="form-label">Attendance Status</label>
+          <select name="status" id="status-select" class="form-control" onchange="handleStatusChange(this.value)" style="font-size:14px">
+            <option value="present"  {% if att.status == 'present'  %}selected{% endif %}>✅ Present</option>
+            <option value="absent"   {% if att.status == 'absent'   %}selected{% endif %}>❌ Absent</option>
+            <option value="half_day" {% if att.status == 'half_day' %}selected{% endif %}>⚡ Half Day</option>
+            <option value="holiday"  {% if att.status == 'holiday'  %}selected{% endif %}>🏖 Holiday</option>
+            <option value="leave"    {% if att.status == 'leave'    %}selected{% endif %}>✈️ On Leave</option>
+          </select>
+        </div>
+
+        <!-- Time fields -->
+        <div id="time-section">
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                <i class="fas fa-sign-in-alt" style="color:#16a34a"></i> In Time
+              </label>
+              <input type="time" name="in_time" id="in-time" class="form-control"
+                value="{{ att.in_time|time:'H:i'|default:'' }}" onchange="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                <i class="fas fa-sign-out-alt" style="color:#2563eb"></i> Out Time
+              </label>
+              <input type="time" name="out_time" id="out-time" class="form-control"
+                value="{{ att.out_time|time:'H:i'|default:'' }}" onchange="updatePreview()">
+            </div>
+          </div>
+
+          <!-- Live total hours preview -->
+          <div id="hours-preview" style="padding:10px 14px;border-radius:8px;background:var(--orange-pale);border:1px solid var(--orange-light);margin-bottom:16px;font-size:13px;color:var(--slate-600)">
+            <i class="fas fa-clock" style="color:var(--orange)"></i>
+            Total Hours: <span id="preview-val" class="time-preview">—</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fas fa-star" style="color:#7c3aed"></i> OT Hours
+            <span style="font-size:11px;color:var(--slate-400);font-weight:400">(overtime, separate from total)</span>
+          </label>
+          <input type="number" name="ot_hours" class="form-control" step="0.5" min="0" max="24"
+            value="{{ att.ot_hours }}" style="max-width:160px">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-note-sticky" style="color:var(--slate-400)"></i> Notes</label>
+          <textarea name="notes" class="form-control" rows="3" placeholder="Optional note about this attendance record...">{{ att.notes|default:'' }}</textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Update Attendance
+          </button>
+          <a href="{{ return_url }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info sidebar -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Employee quick info -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" style="font-size:13px">Employee Info</span>
+      </div>
+      <div class="card-body" style="padding:14px 16px">
+        <div style="text-align:center;margin-bottom:14px">
+          {% if att.employee.photo %}
+          <img src="{{ att.employee.photo.url }}" style="width:64px;height:64px;border-radius:12px;object-fit:cover">
+          {% else %}
+          <div style="width:64px;height:64px;border-radius:12px;background:var(--orange-light);display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:var(--orange-dark);font-size:26px">
+            {{ att.employee.name|first|upper }}
+          </div>
+          {% endif %}
+          <div style="font-weight:700;font-size:14px;margin-top:8px">{{ att.employee.name }}</div>
+          {% if att.employee.job_title %}
+          <div style="font-size:12px;color:var(--slate-400)">{{ att.employee.job_title }}</div>
+          {% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--slate-500);line-height:1.8">
+          {% if att.employee.mobile %}
+          <div><i class="fas fa-phone" style="width:14px"></i> {{ att.employee.mobile }}</div>
+          {% endif %}
+          {% if att.employee.emp_type %}
+          <div><i class="fas fa-briefcase" style="width:14px"></i> {{ att.employee.get_emp_type_display }}</div>
+          {% endif %}
+        </div>
+        <a href="{% url 'employee_detail' att.employee.pk %}" class="btn btn-sm btn-secondary" style="width:100%;margin-top:12px;font-size:12px;justify-content:center">
+          <i class="fas fa-user"></i> View Profile
+        </a>
+      </div>
+    </div>
+
+    <!-- Current record summary -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" style="font-size:13px">Current Record</span>
+      </div>
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--slate-500)">Status</span>
+            <span class="badge {% if att.status == 'present' %}badge-green{% elif att.status == 'absent' %}badge-red{% elif att.status == 'half_day' %}badge-yellow{% elif att.status == 'leave' %}badge-purple{% else %}badge-blue{% endif %}">
+              {{ att.get_status_display }}
+            </span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--slate-500)">In Time</span>
+            <strong style="color:#16a34a">{{ att.in_time|time:"H:i"|default:"—" }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--slate-500)">Out Time</span>
+            <strong style="color:#2563eb">{{ att.out_time|time:"H:i"|default:"—" }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--slate-500)">Total Hours</span>
+            <strong style="color:var(--orange)">{{ att.total_hours }}h</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--slate-500)">OT Hours</span>
+            <strong style="color:#7c3aed">{{ att.ot_hours }}h</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function handleStatusChange(status) {
+  var section = document.getElementById('time-section');
+  var show = (status === 'present' || status === 'half_day');
+  section.style.opacity = show ? '1' : '.4';
+  section.querySelectorAll('input').forEach(function(i) { i.disabled = !show; });
+}
+
+function updatePreview() {
+  var inVal  = document.getElementById('in-time').value;
+  var outVal = document.getElementById('out-time').value;
+  if (!inVal || !outVal) { document.getElementById('preview-val').textContent = '—'; return; }
+  var inParts  = inVal.split(':');
+  var outParts = outVal.split(':');
+  var inMins   = parseInt(inParts[0]) * 60 + parseInt(inParts[1]);
+  var outMins  = parseInt(outParts[0]) * 60 + parseInt(outParts[1]);
+  var diff = outMins - inMins;
+  if (diff <= 0) { document.getElementById('preview-val').textContent = '—'; return; }
+  var hrs  = Math.floor(diff / 60);
+  var mins = diff % 60;
+  document.getElementById('preview-val').textContent = hrs + 'h ' + (mins > 0 ? mins + 'm' : '');
+}
+
+// Init
+handleStatusChange(document.getElementById('status-select').value);
+updatePreview();
+</script>
+{% endblock %}

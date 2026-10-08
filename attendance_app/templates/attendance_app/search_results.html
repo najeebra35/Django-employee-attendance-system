@@ -1,0 +1,111 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Search Results{% endblock %}
+{% block page_title %}Search{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Search Results</div>
+    <div class="page-header-sub">
+      {% if q %}{{ total }} result{{ total|pluralize }} for "<b>{{ q }}</b>"{% else %}Type a search term in the top bar to get started{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if q %}
+
+{% if employees %}
+<div class="card mb-2">
+  <div class="card-header"><span class="card-title"><i class="fas fa-users"></i> Employees ({{ employees|length }})</span></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Name</th><th>Job Title</th><th>Emirates ID</th><th>Mobile</th><th></th></tr></thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td>{{ emp.name }}</td>
+          <td>{{ emp.job_title|default:"—" }}</td>
+          <td>{{ emp.emirates_id|default:"—" }}</td>
+          <td>{{ emp.mobile|default:"—" }}</td>
+          <td><a href="{% url 'employee_detail' emp.pk %}" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if documents %}
+<div class="card mb-2">
+  <div class="card-header"><span class="card-title"><i class="fas fa-file-lines"></i> Documents ({{ documents|length }})</span></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Document Type</th><th>Doc Number</th><th>Expiry</th><th></th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>{{ doc.employee.name }}</td>
+          <td>{{ doc.doc_type.name }}</td>
+          <td>{{ doc.doc_number|default:"—" }}</td>
+          <td>{{ doc.expiry_date|date:"d M Y"|default:"—" }}</td>
+          <td><a href="{% url 'document_list' %}?employee={{ doc.employee.pk }}" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if letters %}
+<div class="card mb-2">
+  <div class="card-header"><span class="card-title"><i class="fas fa-file-signature"></i> Letters ({{ letters|length }})</span></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Letter Type</th><th>Reference No</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        {% for log in letters %}
+        <tr>
+          <td>{{ log.employee.name }}</td>
+          <td>{{ log.get_letter_type_display }}</td>
+          <td>{{ log.reference_no|default:"—" }}</td>
+          <td>{{ log.created_at|date:"d M Y" }}</td>
+          <td><a href="{% url 'letter_detail' log.pk %}" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if settlements %}
+<div class="card mb-2">
+  <div class="card-header"><span class="card-title"><i class="fas fa-hand-holding-dollar"></i> Settlements ({{ settlements|length }})</span></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Period</th><th>Net Amount</th><th>Settlement Date</th><th></th></tr></thead>
+      <tbody>
+        {% for s in settlements %}
+        <tr>
+          <td>{{ s.employee.name }}</td>
+          <td>{{ s.from_date|date:"d M Y" }} — {{ s.to_date|date:"d M Y" }}</td>
+          <td>AED {{ s.net_amount|floatformat:2 }}</td>
+          <td>{{ s.settlement_date|date:"d M Y" }}</td>
+          <td><a href="{% url 'employee_detail' s.employee.pk %}?tab=settlements" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if total == 0 %}
+<div class="card"><div class="empty-state"><i class="fas fa-magnifying-glass"></i><p>No results found for "{{ q }}".</p></div></div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

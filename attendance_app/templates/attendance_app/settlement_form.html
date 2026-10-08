@@ -1,0 +1,84 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ action }} Settlement{% endblock %}
+{% block page_title %}{{ action }} Settlement{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{{ action }} Settlement</div>
+    <div class="page-header-sub">Enter the already-calculated OT and leave-deduction figures for this period — no auto-calculation is performed</div>
+  </div>
+  <a href="{% url 'settlement_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" class="form-control" required>
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}"
+            {% if s and s.employee_id == emp.pk %}selected
+            {% elif not s and preselect_emp == emp.pk|stringformat:"s" %}selected
+            {% elif not s and form_data.employee == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Period From <span class="req">*</span></label>
+          <input type="date" name="from_date" class="form-control" required value="{{ s.from_date|date:'Y-m-d'|default:form_data.from_date|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Period To <span class="req">*</span></label>
+          <input type="date" name="to_date" class="form-control" required value="{{ s.to_date|date:'Y-m-d'|default:form_data.to_date|default:'' }}">
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label class="form-label">OT Amount (AED)</label>
+        <input type="number" step="0.01" name="ot_amount" class="form-control" placeholder="0.00" value="{{ s.ot_amount|default:form_data.ot_amount|default:'' }}">
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Total Leave / Absent Days</label>
+          <input type="number" step="0.5" name="leave_days" class="form-control" placeholder="0" value="{{ s.leave_days|default:form_data.leave_days|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Leave Deduction Amount (AED)</label>
+          <input type="number" step="0.01" name="leave_deduction_amount" class="form-control" placeholder="0.00" value="{{ s.leave_deduction_amount|default:form_data.leave_deduction_amount|default:'' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Net Settlement Amount (AED) <span class="req">*</span></label>
+        <input type="number" step="0.01" name="net_amount" class="form-control" required placeholder="Final amount paid/settled" value="{{ s.net_amount|default:form_data.net_amount|default:'' }}" style="font-weight:700">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Settlement Date</label>
+        <input type="date" name="settlement_date" class="form-control" value="{{ s.settlement_date|date:'Y-m-d'|default:form_data.settlement_date|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="Optional">{{ s.notes|default:form_data.notes|default:'' }}</textarea>
+      </div>
+
+      <div class="divider"></div>
+      <div class="actions-row">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Settlement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

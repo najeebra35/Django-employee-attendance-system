@@ -1,0 +1,87 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}User Management{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Users & Permissions</div>
+    <div class="page-header-sub">Admin only — manage system users and their access</div>
+  </div>
+  <a href="{% url 'user_add' %}" class="btn btn-primary"><i class="fas fa-user-plus"></i> Add User</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if users %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Permissions</th>
+          <th>Portal</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--orange-dark)">{{ u.username|first|upper }}</div>
+              <span style="font-weight:600">{{ u.username }}</span>
+            </div>
+          </td>
+          <td>{{ u.get_full_name|default:"—" }}</td>
+          <td>{{ u.email|default:"—" }}</td>
+          <td>
+            {% if u.is_superuser %}
+            <span class="badge badge-orange">Administrator</span>
+            {% else %}
+            <span class="badge badge-blue">Staff</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_superuser %}
+            <span class="text-muted">All Access</span>
+            {% else %}
+              {% with perms=u.custom_permissions %}
+                {% if perms %}
+                  <span class="badge badge-green">{{ perms.permissions|length }} permissions</span>
+                {% else %}
+                  <span class="badge badge-red">No permissions</span>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
+          </td>
+          <td>
+            {% for emp in u.employee_profile_set.all %}
+              <span class="badge badge-green" style="font-size:11px"><i class="fas fa-id-badge"></i> {{ emp.name }}</span>
+            {% empty %}
+              {% if u.is_superuser %}
+                <span class="text-muted" style="font-size:12px">Admin</span>
+              {% else %}
+                <span class="text-muted" style="font-size:12px">—</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td>
+            <div class="actions-row">
+              <a href="{% url 'user_edit' u.pk %}" class="btn btn-sm btn-outline"><i class="fas fa-pen"></i> Edit</a>
+              {% if u != request.user %}
+              <a href="{% url 'user_delete' u.pk %}" class="btn btn-sm btn-danger" onclick="return confirm('Delete {{ u.username }}?')"><i class="fas fa-trash"></i></a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-users"></i><p>No users found</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

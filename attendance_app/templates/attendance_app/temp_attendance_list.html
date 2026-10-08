@@ -1,0 +1,92 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Temporary Attendance{% endblock %}
+{% block page_title %}Temporary Attendance{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Temporary Attendance</div>
+    <div class="page-header-sub">Outsource / hourly worker attendance history</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'temp_employee_list' %}" class="btn btn-secondary"><i class="fas fa-users"></i> Workers</a>
+    {% if can_manage %}
+    <a href="{% url 'temp_attendance_mark' %}" class="btn btn-primary"><i class="fas fa-clock"></i> Mark Attendance</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div>
+        <label class="form-label" style="font-size:11px">Worker</label>
+        <select name="worker" class="form-control" style="max-width:220px">
+          <option value="">All Workers</option>
+          {% for w in workers %}
+          <option value="{{ w.pk }}" {% if worker_id == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{% url 'temp_attendance_list' %}" class="btn btn-secondary btn-sm">Clear</a>
+      <a href="{% url 'temp_attendance_export' %}?worker={{ worker_id }}&date_from={{ date_from }}&date_to={{ date_to }}"
+         class="btn btn-sm btn-outline" style="margin-left:auto"><i class="fas fa-file-excel"></i> Export Summary</a>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-2 mb-2">
+  <div class="card"><div class="card-body" style="text-align:center">
+    <div style="font-size:11px;color:var(--slate-500);margin-bottom:4px">Total Hours (filtered)</div>
+    <div style="font-size:22px;font-weight:800;color:var(--orange)">{{ total_hours }}</div>
+  </div></div>
+  <div class="card"><div class="card-body" style="text-align:center">
+    <div style="font-size:11px;color:var(--slate-500);margin-bottom:4px">Total Amount (where rate set)</div>
+    <div style="font-size:22px;font-weight:800;color:var(--orange)">AED {{ total_amount }}</div>
+  </div></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Worker</th><th>Designation</th><th>Hours</th><th>Rate/Hr</th><th>Amount</th><th>Notes</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.date|date:"d M Y" }}</td>
+          <td style="font-weight:600">{{ r.temp_employee.name }}</td>
+          <td>{{ r.temp_employee.designation|default:"—" }}</td>
+          <td>{{ r.hours_worked }}</td>
+          <td>{% if r.temp_employee.hourly_rate %}AED {{ r.temp_employee.hourly_rate }}{% else %}—{% endif %}</td>
+          <td>{% if r.amount %}AED {{ r.amount }}{% else %}—{% endif %}</td>
+          <td style="color:var(--slate-500)">{{ r.notes|default:"—" }}</td>
+          <td>
+            {% if can_manage %}
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'temp_attendance_edit' r.pk %}" class="btn btn-sm btn-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'temp_attendance_delete' r.pk %}" onsubmit="return confirm('Delete this attendance record?');" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><div class="empty-state"><i class="fas fa-user-clock"></i><p>No temporary attendance records found.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

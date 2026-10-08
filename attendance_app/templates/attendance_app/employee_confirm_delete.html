@@ -1,0 +1,23 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Delete Employee{% endblock %}
+{% block page_title %}Delete Employee{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:0 auto">
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:40px">
+      <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:#ef4444">
+        <i class="fas fa-trash"></i>
+      </div>
+      <h3 style="font-size:18px;font-weight:700;color:var(--slate-900);margin-bottom:8px">Delete Employee</h3>
+      <p style="color:var(--slate-600);margin-bottom:24px">Are you sure you want to delete <strong>{{ employee.name }}</strong>? This will also delete all their attendance records.</p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <form method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Yes, Delete</button>
+        </form>
+        <a href="{% url 'employee_list' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

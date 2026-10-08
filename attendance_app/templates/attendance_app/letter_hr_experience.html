@@ -1,0 +1,98 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{% if rec %}Edit{% else %}New{% endif %} Experience Letter{% endblock %}
+{% block page_title %}{% if rec %}Edit{% else %}New{% endif %} Experience Letter{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{% if rec %}Edit{% else %}New{% endif %} Experience Letter</div>
+    <div class="page-header-sub">Certifies the employee's tenure and job title</div>
+  </div>
+  <a href="{% if rec %}{% url 'letter_detail' rec.pk %}{% else %}{% url 'letter_hub' %}{% endif %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="post" id="letterForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" id="empSelect" class="form-control" required onchange="loadEmp()">
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}" {% if preselect_emp == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }} {% if emp.status == 'disabled' %}(Inactive){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if rec %}
+      <div class="form-group">
+        <label class="form-label">Reference No</label>
+        <input type="text" class="form-control" readonly value="{{ rec.reference_no }}">
+      </div>
+      {% endif %}
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Joining Date</label>
+          <input type="text" id="joinDate" class="form-control" readonly placeholder="Auto-filled">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Job Title (override if needed)</label>
+          <input type="text" name="job_title_override" id="jobTitle" class="form-control" placeholder="Auto-filled" value="{{ initial.job_title_override|default:'' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Letter / Issue Date</label>
+        <input type="date" name="letter_date" class="form-control" value="{{ initial.letter_date|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate-600);cursor:pointer">
+          <input type="checkbox" name="still_employed" id="stillEmployed" value="1" {% if not rec or initial.still_employed %}checked{% endif %} style="width:15px;height:15px;accent-color:var(--orange)" onchange="toggleLastDay()">
+          Employee is still currently employed
+        </label>
+      </div>
+
+      <div class="form-group" id="lastWorkingWrap" style="display:{% if initial.last_working_date %}block{% else %}none{% endif %}">
+        <label class="form-label">Last Working Date <span class="req">*</span></label>
+        <input type="date" name="last_working_date" class="form-control" value="{{ initial.last_working_date|default:'' }}">
+      </div>
+
+      <div class="divider"></div>
+      <div class="actions-row">
+        <button type="submit" name="action" value="docx" class="btn btn-primary"><i class="fas fa-file-word"></i> Download Word</button>
+        <button type="submit" name="action" value="pdf" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        {% if rec %}
+        <button type="submit" name="action" value="save" class="btn btn-outline"><i class="fas fa-save"></i> Save Only</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if preselect_emp and not rec %}document.addEventListener("DOMContentLoaded", loadEmp);{% endif %}
+function loadEmp(){
+  var id = document.getElementById('empSelect').value;
+  if(!id){ return; }
+  fetch("{% url 'letter_employee_info' %}?employee_id=" + id)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('joinDate').value = d.joining_date || '';
+      {% if not rec %}
+      document.getElementById('jobTitle').value = d.job_title || '';
+      {% endif %}
+    });
+}
+function toggleLastDay(){
+  var checked = document.getElementById('stillEmployed').checked;
+  document.getElementById('lastWorkingWrap').style.display = checked ? 'none' : 'block';
+}
+</script>
+{% endblock %}

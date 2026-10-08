@@ -1,0 +1,457 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .settings-grid{grid-template-columns:1fr!important;}
+  .settings-tabs{overflow-x:auto;white-space:nowrap;}
+  .time-preview{flex-direction:column;gap:6px;}
+  .wd-grid{grid-template-columns:repeat(4,1fr)!important;}
+}
+</style>
+<style>
+.settings-grid { display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start; }
+.settings-nav  { background:white;border-radius:14px;padding:10px;box-shadow:var(--shadow);border:1px solid var(--slate-200);position:sticky;top:20px; }
+.settings-nav-item {
+  display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;
+  cursor:pointer;font-size:13px;font-weight:600;color:var(--slate-600);transition:all .15s;
+  text-decoration:none;border:none;background:none;width:100%;text-align:left;
+}
+.settings-nav-item:hover { background:var(--orange-pale);color:var(--orange); }
+.settings-nav-item.active { background:var(--orange-pale);color:var(--orange-dark); }
+.settings-nav-item i { width:18px;text-align:center;font-size:14px; }
+.settings-nav-divider { height:1px;background:var(--slate-100);margin:6px 4px; }
+
+.settings-section { display:none; }
+.settings-section.active { display:block; }
+
+.section-header {
+  margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--slate-100);
+}
+.section-title { font-size:17px;font-weight:800;color:var(--slate-900); }
+.section-sub   { font-size:12px;color:var(--slate-400);margin-top:3px; }
+
+.field-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+.field-row.full { grid-template-columns:1fr; }
+
+.logo-preview-wrap {
+  width:110px;height:110px;border-radius:14px;border:2px dashed var(--slate-300);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:var(--slate-50);cursor:pointer;transition:border-color .15s;position:relative;
+}
+.logo-preview-wrap:hover { border-color:var(--orange); }
+.logo-preview-wrap img { width:100%;height:100%;object-fit:contain;padding:8px; }
+.logo-placeholder { text-align:center;color:var(--slate-400); }
+.logo-placeholder i { font-size:28px;margin-bottom:6px;display:block; }
+.logo-placeholder span { font-size:11px;font-weight:600; }
+
+.info-banner {
+  padding:12px 16px;border-radius:10px;background:#dbeafe;border:1px solid #bfdbfe;
+  font-size:12px;color:#1d4ed8;display:flex;gap:8px;align-items:flex-start;margin-bottom:20px;
+}
+.danger-zone {
+  border:2px solid #fecaca;border-radius:12px;padding:16px 20px;background:#fff5f5;
+}
+
+.pw-strength { height:4px;border-radius:2px;background:var(--slate-100);margin-top:6px;overflow:hidden; }
+.pw-strength-fill { height:100%;border-radius:2px;transition:width .3s,background .3s; }
+
+.time-preset-btn {
+  padding:5px 12px;border-radius:8px;border:1.5px solid var(--slate-200);
+  background:white;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--slate-600);
+}
+.time-preset-btn:hover { border-color:var(--orange);color:var(--orange);background:var(--orange-pale); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Settings</div>
+    <div class="page-header-sub">Manage company profile, work schedule, and system preferences</div>
+  </div>
+  {% if cs.updated_at %}
+  <span style="font-size:12px;color:var(--slate-400)">
+    <i class="fas fa-clock"></i> Last saved: {{ cs.updated_at|timesince }} ago
+  </span>
+  {% endif %}
+</div>
+
+<div class="settings-grid">
+
+  <!-- Left nav -->
+  <div class="settings-nav">
+    <a href="?tab=company"  class="settings-nav-item {% if active_tab == 'company'  %}active{% endif %}">
+      <i class="fas fa-building"></i> Company Profile
+    </a>
+    <a href="?tab=work"     class="settings-nav-item {% if active_tab == 'work'     %}active{% endif %}">
+      <i class="fas fa-clock"></i> Work Schedule
+    </a>
+    <div class="settings-nav-divider"></div>
+    <a href="?tab=system"   class="settings-nav-item {% if active_tab == 'system'   %}active{% endif %}">
+      <i class="fas fa-sliders"></i> System
+    </a>
+    <a href="?tab=password" class="settings-nav-item {% if active_tab == 'password' %}active{% endif %}">
+      <i class="fas fa-lock"></i> Change Password
+    </a>
+  </div>
+
+  <!-- Right content -->
+  <div>
+
+    <!-- ── COMPANY PROFILE ──────────────────────────────── -->
+    <div class="settings-section {% if active_tab == 'company' %}active{% endif %}" id="sec-company">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="company">
+
+        <div class="card">
+          <div class="card-body">
+
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-building" style="color:var(--orange)"></i> Company Profile</div>
+              <div class="section-sub">This information appears on exported PDF and Excel reports</div>
+            </div>
+
+            <!-- Logo upload -->
+            <div class="form-group" style="margin-bottom:20px">
+              <label class="form-label">Company Logo</label>
+              <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <div class="logo-preview-wrap" onclick="document.getElementById('logo-input').click()">
+                  {% if cs.logo %}
+                  <img src="{{ cs.logo.url }}" id="logo-preview" alt="Logo">
+                  {% else %}
+                  <div class="logo-placeholder" id="logo-placeholder">
+                    <i class="fas fa-image"></i>
+                    <span>Click to upload</span>
+                  </div>
+                  <img src="" id="logo-preview" style="display:none;width:100%;height:100%;object-fit:contain;padding:8px">
+                  {% endif %}
+                </div>
+                <div>
+                  <input type="file" id="logo-input" name="logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
+                  <button type="button" onclick="document.getElementById('logo-input').click()" class="btn btn-secondary" style="font-size:12px;display:block;margin-bottom:8px">
+                    <i class="fas fa-upload"></i> Upload Logo
+                  </button>
+                  {% if cs.logo %}
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#dc2626;cursor:pointer">
+                    <input type="checkbox" name="remove_logo" value="1"> Remove current logo
+                  </label>
+                  {% endif %}
+                  <div style="font-size:11px;color:var(--slate-400);margin-top:6px">PNG or JPG, max 2MB<br>Recommended: 200×200px</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="form-group">
+                <label class="form-label">Company Name <span style="color:#dc2626">*</span></label>
+                <input type="text" name="company_name" class="form-control" value="{{ cs.company_name }}" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">TRN / Tax Number</label>
+                <input type="text" name="company_trn" class="form-control" value="{{ cs.company_trn }}" placeholder="e.g. 100123456700003">
+              </div>
+            </div>
+
+            <div class="field-row full">
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea name="company_address" class="form-control" rows="2">{{ cs.company_address }}</textarea>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-phone" style="color:var(--slate-400)"></i> Phone</label>
+                <input type="text" name="company_phone" class="form-control" value="{{ cs.company_phone }}" placeholder="+971 XX XXX XXXX">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-envelope" style="color:var(--slate-400)"></i> Email</label>
+                <input type="email" name="company_email" class="form-control" value="{{ cs.company_email }}" placeholder="info@company.com">
+              </div>
+            </div>
+
+            <div class="field-row full">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-globe" style="color:var(--slate-400)"></i> Website</label>
+                <input type="url" name="company_website" class="form-control" value="{{ cs.company_website }}" placeholder="https://www.company.com">
+              </div>
+            </div>
+
+            <div style="padding-top:8px">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Company Profile</button>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── WORK SCHEDULE ────────────────────────────────── -->
+    <div class="settings-section {% if active_tab == 'work' %}active{% endif %}" id="sec-work">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="work">
+
+        <div class="card">
+          <div class="card-body">
+
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-clock" style="color:var(--orange)"></i> Work Schedule</div>
+              <div class="section-sub">Default times used when marking attendance</div>
+            </div>
+
+            <div class="info-banner">
+              <i class="fas fa-circle-info" style="margin-top:1px"></i>
+              <div>These defaults are applied when you click <strong>"Apply to Present"</strong> on the Mark Attendance page. They don't override already-saved times.</div>
+            </div>
+
+            <!-- Time presets -->
+            <div class="form-group" style="margin-bottom:6px">
+              <label class="form-label">Quick Presets</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="time-preset-btn" onclick="setTimes('07:00','13:00')">🕖 7:00 – 13:00</button>
+                <button type="button" class="time-preset-btn" onclick="setTimes('07:00','16:00')">🕗 7:00 – 16:00</button>
+                <button type="button" class="time-preset-btn" onclick="setTimes('07:00','17:00')">🕗 7:00 – 17:00</button>
+                <button type="button" class="time-preset-btn" onclick="setTimes('07:00','18:00')">🕘 7:00 – 18:00</button>
+                <button type="button" class="time-preset-btn" onclick="setTimes('09:07','19:00')">🕘 7:00 – 19:00</button>
+              </div>
+            </div>
+
+            <div class="field-row" style="margin-top:16px">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-sign-in-alt" style="color:#16a34a"></i> Default In Time</label>
+                <input type="time" name="default_in_time" id="def-in" class="form-control" value="{{ cs.default_in_time|time:'H:i' }}">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-sign-out-alt" style="color:#2563eb"></i> Default Out Time</label>
+                <input type="time" name="default_out_time" id="def-out" class="form-control" value="{{ cs.default_out_time|time:'H:i' }}">
+              </div>
+            </div>
+
+            <!-- Live hours preview -->
+            <div id="hours-preview" style="padding:10px 14px;border-radius:8px;background:var(--orange-pale);border:1px solid var(--orange-light);margin-bottom:20px;font-size:13px">
+              <i class="fas fa-clock" style="color:var(--orange)"></i>
+              Default shift: <strong id="shift-hours" style="color:var(--orange)">10h 0m</strong>
+            </div>
+
+            <div class="field-row">
+              <div class="form-group">
+                <label class="form-label">Working Days</label>
+                <input type="text" name="work_days" class="form-control" value="{{ cs.work_days }}" placeholder="Mon-Sat">
+                <div style="font-size:11px;color:var(--slate-400);margin-top:4px">Used for display purposes only</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Weekend / Off Day</label>
+                <select name="weekend_day" class="form-control">
+                  <option value="Sunday"          {% if cs.weekend_day == 'Sunday'          %}selected{% endif %}>Sunday</option>
+                  <option value="Friday"          {% if cs.weekend_day == 'Friday'          %}selected{% endif %}>Friday</option>
+                  <option value="Saturday"        {% if cs.weekend_day == 'Saturday'        %}selected{% endif %}>Saturday</option>
+                  <option value="Friday-Saturday" {% if cs.weekend_day == 'Friday-Saturday' %}selected{% endif %}>Friday & Saturday</option>
+                </select>
+                <div style="font-size:11px;color:var(--slate-400);margin-top:4px">Used to highlight off days in PDF export</div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Work Schedule</button>
+
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── SYSTEM ─────────────────────────────────────────── -->
+    <div class="settings-section {% if active_tab == 'system' %}active{% endif %}" id="sec-system">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="system">
+
+        <div class="card">
+          <div class="card-body">
+
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-sliders" style="color:var(--orange)"></i> System Settings</div>
+              <div class="section-sub">Regional and display preferences</div>
+            </div>
+
+            <div class="field-row">
+              <div class="form-group">
+                <label class="form-label">Timezone</label>
+                <select name="timezone_name" class="form-control">
+                  {% for tz in timezones %}
+                  <option value="{{ tz }}" {% if tz == cs.timezone_name %}selected{% endif %}>{{ tz }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date Format</label>
+                <select name="date_format" class="form-control">
+                  <option value="d-m-Y" {% if cs.date_format == 'd-m-Y' %}selected{% endif %}>DD-MM-YYYY (e.g. 15-03-2025)</option>
+                  <option value="m/d/Y" {% if cs.date_format == 'm/d/Y' %}selected{% endif %}>MM/DD/YYYY (e.g. 03/15/2025)</option>
+                  <option value="Y-m-d" {% if cs.date_format == 'Y-m-d' %}selected{% endif %}>YYYY-MM-DD (e.g. 2025-03-15)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- System info panel -->
+            <div style="background:var(--slate-50);border-radius:10px;padding:16px;border:1px solid var(--slate-200);margin-bottom:20px">
+              <div style="font-size:12px;font-weight:700;color:var(--slate-500);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">System Info</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+                <div><span style="color:var(--slate-400)">App Version:</span> <strong>AttendPro v2.0</strong></div>
+                <div><span style="color:var(--slate-400)">Framework:</span> <strong>Django</strong></div>
+                <div><span style="color:var(--slate-400)">Database:</span> <strong>SQLite</strong></div>
+                <div><span style="color:var(--slate-400)">Current TZ:</span> <strong>{{ cs.timezone_name }}</strong></div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save System Settings</button>
+
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── CHANGE PASSWORD ──────────────────────────────── -->
+    <div class="settings-section {% if active_tab == 'password' %}active{% endif %}" id="sec-password">
+      <form method="post" id="pw-form">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="password">
+
+        <div class="card">
+          <div class="card-body">
+
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-lock" style="color:var(--orange)"></i> Change Password</div>
+              <div class="section-sub">Update the administrator account password</div>
+            </div>
+
+            <div style="max-width:420px">
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <div style="position:relative">
+                  <input type="password" name="current_password" id="cur-pw" class="form-control" autocomplete="current-password">
+                  <button type="button" onclick="togglePw('cur-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--slate-400);font-size:14px">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <div style="position:relative">
+                  <input type="password" name="new_password" id="new-pw" class="form-control" oninput="checkStrength(this.value)" autocomplete="new-password">
+                  <button type="button" onclick="togglePw('new-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--slate-400);font-size:14px">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+                <div class="pw-strength"><div class="pw-strength-fill" id="pw-bar" style="width:0%;background:#dc2626"></div></div>
+                <div id="pw-hint" style="font-size:11px;color:var(--slate-400);margin-top:4px">Minimum 6 characters</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <div style="position:relative">
+                  <input type="password" name="confirm_password" id="conf-pw" class="form-control" oninput="checkMatch()" autocomplete="new-password">
+                  <button type="button" onclick="togglePw('conf-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--slate-400);font-size:14px">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+                <div id="match-hint" style="font-size:11px;margin-top:4px"></div>
+              </div>
+
+              <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Change Password</button>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewLogo(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var prev = document.getElementById('logo-preview');
+      var placeholder = document.getElementById('logo-placeholder');
+      prev.src = e.target.result;
+      prev.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function setTimes(inT, outT) {
+  document.getElementById('def-in').value  = inT;
+  document.getElementById('def-out').value = outT;
+  updateShiftPreview();
+}
+
+function updateShiftPreview() {
+  var inEl  = document.getElementById('def-in');
+  var outEl = document.getElementById('def-out');
+  if (!inEl || !outEl) return;
+  var inParts  = inEl.value.split(':');
+  var outParts = outEl.value.split(':');
+  if (inParts.length < 2 || outParts.length < 2) return;
+  var diff = (parseInt(outParts[0])*60+parseInt(outParts[1])) - (parseInt(inParts[0])*60+parseInt(inParts[1]));
+  if (diff <= 0) { document.getElementById('shift-hours').textContent = '—'; return; }
+  document.getElementById('shift-hours').textContent = Math.floor(diff/60) + 'h ' + (diff%60) + 'm';
+}
+
+var defIn  = document.getElementById('def-in');
+var defOut = document.getElementById('def-out');
+if (defIn)  defIn.addEventListener('change',  updateShiftPreview);
+if (defOut) defOut.addEventListener('change', updateShiftPreview);
+updateShiftPreview();
+
+function togglePw(id, btn) {
+  var el = document.getElementById(id);
+  var showing = el.type === 'text';
+  el.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+}
+
+function checkStrength(val) {
+  var bar  = document.getElementById('pw-bar');
+  var hint = document.getElementById('pw-hint');
+  var score = 0;
+  if (val.length >= 6)  score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  var pct   = (score/5*100) + '%';
+  var color = score <= 1 ? '#dc2626' : score <= 2 ? '#f59e0b' : score <= 3 ? '#f97316' : '#22c55e';
+  var label = score <= 1 ? 'Weak' : score <= 2 ? 'Fair' : score <= 3 ? 'Good' : 'Strong';
+  bar.style.width = pct;
+  bar.style.background = color;
+  hint.textContent = val.length === 0 ? 'Minimum 6 characters' : label + ' password';
+  hint.style.color = color;
+}
+
+function checkMatch() {
+  var nw   = document.getElementById('new-pw').value;
+  var cf   = document.getElementById('conf-pw').value;
+  var hint = document.getElementById('match-hint');
+  if (!cf) { hint.textContent=''; return; }
+  if (nw === cf) {
+    hint.textContent = '✓ Passwords match';
+    hint.style.color = '#16a34a';
+  } else {
+    hint.textContent = '✗ Passwords do not match';
+    hint.style.color = '#dc2626';
+  }
+}
+</script>
+{% endblock %}

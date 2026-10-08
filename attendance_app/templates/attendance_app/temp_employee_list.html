@@ -1,0 +1,70 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Temporary Workers{% endblock %}
+{% block page_title %}Temporary Workers{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Temporary Workers</div>
+    <div class="page-header-sub">Outsource / hourly workers brought in for urgent or short-term jobs</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'temp_attendance_list' %}" class="btn btn-secondary"><i class="fas fa-clock-rotate-left"></i> Attendance History</a>
+    {% if can_manage %}
+    <a href="{% url 'temp_employee_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Worker</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="text" name="search" class="form-control" style="max-width:220px" placeholder="Search name..." value="{{ search }}">
+      <select name="status" class="form-control" style="max-width:160px">
+        <option value="">All Status</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{% url 'temp_employee_list' %}" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Name</th><th>Designation</th><th>Mobile</th><th>Hourly Rate</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for w in workers %}
+        <tr>
+          <td style="font-weight:600">{{ w.name }}</td>
+          <td>{{ w.designation|default:"—" }}</td>
+          <td>{{ w.mobile|default:"—" }}</td>
+          <td>{% if w.hourly_rate %}AED {{ w.hourly_rate }}{% else %}—{% endif %}</td>
+          <td>{% if w.status == 'active' %}<span class="badge badge-green">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</td>
+          <td>
+            
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'temp_employee_detail' w.pk %}" class="btn btn-sm btn-secondary" title="View Attendance"><i class="fas fa-eye"></i></a>
+              {% if can_manage %}
+              <a href="{% url 'temp_attendance_mark' %}?worker={{ w.pk }}" class="btn btn-sm btn-secondary" title="Mark Attendance"><i class="fas fa-clock"></i></a>
+              <a href="{% url 'temp_employee_edit' w.pk %}" class="btn btn-sm btn-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'temp_employee_delete' w.pk %}" onsubmit="return confirm('Delete {{ w.name }}? This will also delete all their attendance records.');" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+              {% endif %}
+            </div>
+            
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state"><i class="fas fa-user-clock"></i><p>No temporary workers added yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

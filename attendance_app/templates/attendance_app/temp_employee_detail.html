@@ -1,0 +1,92 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ worker.name }} — Attendance{% endblock %}
+{% block page_title %}{{ worker.name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{{ worker.name }}</div>
+    <div class="page-header-sub">
+      {{ worker.designation|default:"—" }}
+      {% if worker.status == 'active' %}<span class="badge badge-green" style="margin-left:6px">Active</span>{% else %}<span class="badge" style="margin-left:6px">Inactive</span>{% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    {% if can_manage %}
+    <a href="{% url 'temp_attendance_mark' %}" class="btn btn-primary"><i class="fas fa-clock"></i> Mark Attendance</a>
+    <a href="{% url 'temp_employee_edit' worker.pk %}" class="btn btn-secondary"><i class="fas fa-pen"></i> Edit</a>
+    {% endif %}
+    <a href="{% url 'temp_employee_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<div class="grid grid-2 mb-2">
+  <div class="card"><div class="card-body">
+    <div style="font-size:11px;color:var(--slate-500);margin-bottom:8px">Worker Details</div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+      <div><b>Mobile:</b> {{ worker.mobile|default:"—" }}</div>
+      <div><b>Hourly Rate:</b> {% if worker.hourly_rate %}AED {{ worker.hourly_rate }}{% else %}—{% endif %}</div>
+      <div><b>Notes:</b> {{ worker.notes|default:"—" }}</div>
+    </div>
+  </div></div>
+  <div class="card"><div class="card-body">
+    <div style="font-size:11px;color:var(--slate-500);margin-bottom:8px">Totals {% if date_from or date_to %}(filtered){% endif %}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+      <div><div style="font-size:20px;font-weight:800;color:var(--orange)">{{ total_days }}</div><div style="font-size:10px;color:var(--slate-500)">Days Worked</div></div>
+      <div><div style="font-size:20px;font-weight:800;color:var(--orange)">{{ total_hours }}</div><div style="font-size:10px;color:var(--slate-500)">Total Hours</div></div>
+      <div><div style="font-size:20px;font-weight:800;color:var(--orange)">AED {{ total_amount }}</div><div style="font-size:10px;color:var(--slate-500)">Total Amount</div></div>
+    </div>
+  </div></div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div>
+        <label class="form-label" style="font-size:11px">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{% url 'temp_employee_detail' worker.pk %}" class="btn btn-secondary btn-sm">Clear</a>
+      <a href="{% url 'temp_attendance_export' %}?workers={{ worker.pk }}&date_from={{ date_from }}&date_to={{ date_to }}"
+         class="btn btn-sm btn-outline" style="margin-left:auto"><i class="fas fa-file-excel"></i> Export This Worker</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Hours Worked</th><th>Amount</th><th>Notes</th>{% if can_manage %}<th>Actions</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.date|date:"d M Y" }}</td>
+          <td>{{ r.hours_worked }}</td>
+          <td>{% if r.amount %}AED {{ r.amount }}{% else %}—{% endif %}</td>
+          <td style="color:var(--slate-500)">{{ r.notes|default:"—" }}</td>
+          {% if can_manage %}
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'temp_attendance_edit' r.pk %}" class="btn btn-sm btn-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'temp_attendance_delete' r.pk %}" onsubmit="return confirm('Delete this attendance record?');" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state"><i class="fas fa-user-clock"></i><p>No attendance recorded for this worker yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

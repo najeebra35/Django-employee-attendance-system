@@ -1,0 +1,253 @@
+{% extends 'attendance_app/portal_base.html' %}
+{% block title %}My Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .calendar-grid{font-size:11px;}
+  .cal-day{min-height:44px;padding:4px;}
+  .portal-pills{flex-wrap:wrap;}
+}
+</style>
+<style>
+.att-cal { width:100%; border-collapse:collapse; }
+.att-cal th { padding:8px 4px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--slate-500); text-align:center; }
+.att-cal td { padding:4px; }
+.day-cell {
+  border-radius:10px; padding:8px 6px; text-align:center; min-height:70px;
+  cursor:pointer; border:1.5px solid transparent; transition:all .15s;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+.day-cell:hover:not(.day-empty):not(.day-future) { transform:scale(1.04); box-shadow:var(--shadow-md); }
+.day-empty { visibility:hidden; cursor:default; }
+.day-future { opacity:.4; cursor:default; }
+.day-today  { border-color:var(--orange) !important; box-shadow:0 0 0 2px rgba(249,115,22,.2); }
+.day-num    { font-size:13px; font-weight:800; color:var(--slate-700); line-height:1; }
+.day-label  { font-size:10px; font-weight:600; }
+.day-weekday{ font-size:9px; color:var(--slate-400); font-weight:500; }
+
+.day-present  { background:#dcfce7; border-color:#bbf7d0; }
+.day-absent   { background:#fee2e2; border-color:#fecaca; }
+.day-half_day { background:#fef3c7; border-color:#fde68a; }
+.day-leave    { background:#f3e8ff; border-color:#e9d5ff; }
+.day-holiday  { background:var(--slate-50); border-color:var(--slate-200); }
+.day-unmarked { background:white; border-color:var(--slate-100); }
+
+.day-present .day-num  { color:#15803d; }
+.day-absent  .day-num  { color:#dc2626; }
+.day-half_day .day-num { color:#d97706; }
+.day-leave   .day-num  { color:#7c3aed; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div>
+    <div class="page-title">📅 My Attendance</div>
+    <div class="page-sub">{{ emp.name }} &nbsp;·&nbsp; {{ month_name }}</div>
+  </div>
+  <form method="get" style="display:flex;gap:8px;align-items:center">
+    <select name="year" class="form-control" style="width:90px;font-size:13px">
+      {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select>
+    <select name="month" class="form-control" style="width:130px;font-size:13px">
+      {% for mn, ml in months %}<option value="{{ mn }}" {% if mn == month %}selected{% endif %}>{{ ml }}</option>{% endfor %}
+    </select>
+    <button type="submit" style="padding:8px 14px;border-radius:8px;background:var(--orange);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">Go</button>
+  </form>
+</div>
+
+<!-- Stats pills -->
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+  <div style="padding:8px 16px;border-radius:10px;background:#dcfce7;font-size:13px;font-weight:700;color:#15803d">✅ {{ present }} Present</div>
+  <div style="padding:8px 16px;border-radius:10px;background:#fee2e2;font-size:13px;font-weight:700;color:#dc2626">❌ {{ absent }} Absent</div>
+  <div style="padding:8px 16px;border-radius:10px;background:#fef3c7;font-size:13px;font-weight:700;color:#d97706">🌓 {{ half_day }} Half Day</div>
+  <div style="padding:8px 16px;border-radius:10px;background:#f3e8ff;font-size:13px;font-weight:700;color:#7c3aed">✈️ {{ leave }} Leave</div>
+  <div style="padding:8px 16px;border-radius:10px;background:var(--orange-pale);font-size:13px;font-weight:700;color:var(--orange-dark)">⏱️ {{ total_ot }}h OT</div>
+  <div style="padding:8px 16px;border-radius:10px;background:{% if att_rate >= 80 %}#dcfce7{% elif att_rate >= 60 %}#fef3c7{% else %}#fee2e2{% endif %};font-size:13px;font-weight:700;color:{% if att_rate >= 80 %}#15803d{% elif att_rate >= 60 %}#d97706{% else %}#dc2626{% endif %}">📊 {{ att_rate }}% Rate</div>
+</div>
+
+<!-- Calendar -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:20px">
+    <table class="att-cal">
+      <thead>
+        <tr>
+          <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% comment %}Build calendar grid with proper day-of-week offset{% endcomment %}
+        <tr id="cal-row-0">
+        {% with first_weekday=date_from.weekday %}
+        {% for i in "0123456" %}
+          {% if forloop.counter0 < first_weekday %}
+          <td><div class="day-cell day-empty"></div></td>
+          {% endif %}
+        {% endfor %}
+        {% for day in cal_days %}
+          {% with wday=day.date.weekday %}
+          {% if forloop.first and first_weekday > 0 %}{% endif %}
+          <td>
+            <div class="day-cell {% if day.is_holiday %}day-holiday{% elif day.is_future %}day-future day-unmarked{% elif day.att %}day-{{ day.att.status }}{% else %}day-unmarked{% endif %} {% if day.is_today %}day-today{% endif %}"
+                 {% if day.att and not day.is_future %}onclick="showDetail('{{ day.date|date:'Y-m-d' }}')" title="{{ day.date|date:'d M Y' }}"{% endif %}>
+              <span class="day-weekday">{{ day.weekday }}</span>
+              <span class="day-num">{{ day.date.day }}</span>
+              {% if day.is_holiday %}
+                <span class="day-label" style="color:var(--slate-400);font-size:9px">{{ day.holiday_name|truncatechars:8 }}</span>
+              {% elif day.att %}
+                <span class="day-label" style="color:{% if day.att.status == 'present' %}#15803d{% elif day.att.status == 'absent' %}#dc2626{% elif day.att.status == 'half_day' %}#d97706{% elif day.att.status == 'leave' %}#7c3aed{% else %}var(--slate-400){% endif %}">
+                  {% if day.att.status == 'present' %}✓{% elif day.att.status == 'absent' %}✗{% elif day.att.status == 'half_day' %}½{% elif day.att.status == 'leave' %}L{% endif %}
+                </span>
+              {% elif day.is_future %}
+                <span class="day-label" style="color:var(--slate-300)">—</span>
+              {% else %}
+                <span class="day-label" style="color:var(--slate-300)">?</span>
+              {% endif %}
+            </div>
+          </td>
+          {% if wday == 6 and not forloop.last %}</tr><tr>{% endif %}
+          {% endwith %}
+        {% endfor %}
+        <!-- Fill remaining cells -->
+        {% with last_weekday=date_to.weekday %}
+        {% for i in "0123456" %}
+          {% if forloop.counter0 > last_weekday %}
+          <td><div class="day-cell day-empty"></div></td>
+          {% endif %}
+        {% endfor %}
+        {% endwith %}
+        {% endwith %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Legend -->
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--slate-500)"><span style="width:12px;height:12px;border-radius:4px;background:#dcfce7;border:1px solid #bbf7d0"></span> Present</div>
+  <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--slate-500)"><span style="width:12px;height:12px;border-radius:4px;background:#fee2e2;border:1px solid #fecaca"></span> Absent</div>
+  <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--slate-500)"><span style="width:12px;height:12px;border-radius:4px;background:#fef3c7;border:1px solid #fde68a"></span> Half Day</div>
+  <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--slate-500)"><span style="width:12px;height:12px;border-radius:4px;background:#f3e8ff;border:1px solid #e9d5ff"></span> Leave</div>
+  <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--slate-500)"><span style="width:12px;height:12px;border-radius:4px;background:var(--slate-50);border:1px solid #e2e8f0"></span> Holiday</div>
+  <div style="font-size:12px;color:var(--slate-400);margin-left:4px"><i class="fas fa-circle-info"></i> Click a marked day for details</div>
+</div>
+
+<!-- List view of all records -->
+<div class="card">
+  <div class="card-body">
+    <div style="font-size:14px;font-weight:800;color:var(--slate-900);margin-bottom:14px">📋 Detailed Records — {{ month_name }}</div>
+    {% if cal_days %}
+    <div class="table-wrap">
+      <table class="dt">
+        <thead>
+          <tr><th>Date</th><th>Day</th><th>Status</th><th>In Time</th><th>Out Time</th><th>Hours</th><th>OT</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          {% for day in cal_days %}
+          {% if not day.is_holiday %}
+          <tr style="{% if day.is_today %}background:var(--orange-pale){% endif %}">
+            <td style="font-weight:600;white-space:nowrap">{{ day.date|date:"d M Y" }}{% if day.is_today %} <span style="font-size:10px;background:var(--orange);color:white;padding:1px 5px;border-radius:4px;font-weight:700">Today</span>{% endif %}</td>
+            <td style="color:var(--slate-400);font-size:12px">{{ day.weekday }}</td>
+            <td>
+              {% if day.att %}
+                {% if day.att.status == 'present'  %}<span class="badge badge-green">Present</span>
+                {% elif day.att.status == 'absent'  %}<span class="badge badge-red">Absent</span>
+                {% elif day.att.status == 'half_day'%}<span class="badge badge-yellow">Half Day</span>
+                {% elif day.att.status == 'leave'   %}<span class="badge badge-purple">Leave</span>
+                {% elif day.att.status == 'holiday' %}<span class="badge badge-gray">Holiday</span>
+                {% endif %}
+              {% elif day.is_future %}
+                <span class="badge badge-gray">—</span>
+              {% else %}
+                <span class="badge badge-gray" style="color:#dc2626;background:#fff0f0">Not Marked</span>
+              {% endif %}
+            </td>
+            <td>{% if day.att and day.att.in_time %}{{ day.att.in_time|time:"H:i" }}{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+            <td>{% if day.att and day.att.out_time %}{{ day.att.out_time|time:"H:i" }}{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+            <td>{% if day.att and day.att.total_hours > 0 %}<strong style="color:var(--orange)">{{ day.att.total_hours }}h</strong>{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+            <td>{% if day.att and day.att.ot_hours > 0 %}<strong style="color:#7c3aed">+{{ day.att.ot_hours }}h</strong>{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+            <td style="font-size:12px;color:var(--slate-500)">{% if day.att and day.att.notes %}{{ day.att.notes|truncatechars:30 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span id="modal-date">Attendance Detail</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body" style="font-size:13px;color:var(--slate-700)">Loading…</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showDetail(dateStr) {
+  document.getElementById('detail-modal').classList.add('open');
+  document.getElementById('modal-body').innerHTML = '<div style="text-align:center;padding:20px;color:var(--slate-400)"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+  fetch('/portal/attendance/ajax/?date=' + dateStr)
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) {
+        document.getElementById('modal-body').innerHTML = '<p style="color:#dc2626">No record found.</p>';
+        return;
+      }
+      document.getElementById('modal-date').textContent = d.date;
+      var statusColors = {
+        'Present':'#dcfce7;color:#15803d','Absent':'#fee2e2;color:#dc2626',
+        'Half Day':'#fef3c7;color:#d97706','On Leave':'#f3e8ff;color:#7c3aed',
+        'Holiday':'#f1f5f9;color:#64748b'
+      };
+      var sc = statusColors[d.status] || '#f1f5f9;color:#64748b';
+      document.getElementById('modal-body').innerHTML = `
+        <div style="display:flex;justify-content:center;margin-bottom:16px">
+          <span style="padding:6px 20px;border-radius:20px;font-weight:800;font-size:14px;background:${sc.split(';')[0].replace('background:','')};${sc.split(';')[1]}">${d.status}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--slate-50);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:var(--slate-400);font-weight:600;margin-bottom:4px">IN TIME</div>
+            <div style="font-size:20px;font-weight:800;color:var(--slate-900)">${d.in_time}</div>
+          </div>
+          <div style="background:var(--slate-50);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:var(--slate-400);font-weight:600;margin-bottom:4px">OUT TIME</div>
+            <div style="font-size:20px;font-weight:800;color:var(--slate-900)">${d.out_time}</div>
+          </div>
+          <div style="background:var(--orange-pale);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:var(--slate-400);font-weight:600;margin-bottom:4px">TOTAL HOURS</div>
+            <div style="font-size:20px;font-weight:800;color:var(--orange)">${d.total_hours}h</div>
+          </div>
+          <div style="background:#f5f3ff;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:var(--slate-400);font-weight:600;margin-bottom:4px">OT HOURS</div>
+            <div style="font-size:20px;font-weight:800;color:#7c3aed">${d.ot_hours === '0.00' ? '—' : '+' + d.ot_hours + 'h'}</div>
+          </div>
+        </div>
+        ${d.notes ? `<div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px;color:var(--slate-600)"><i class="fas fa-note-sticky"></i> ${d.notes}</div>` : ''}
+      `;
+    })
+    .catch(() => {
+      document.getElementById('modal-body').innerHTML = '<p style="color:#dc2626">Failed to load details.</p>';
+    });
+}
+
+function closeModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+}
+
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Temporary Attendance Report{% endblock %}
+{% block page_title %}Temporary Attendance Report{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Temporary Attendance Report</div>
+    <div class="page-header-sub">Select workers and a date range to export a summary — totals are calculated automatically</div>
+  </div>
+  <a href="{% url 'temp_attendance_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="get" action="{% url 'temp_attendance_export' %}" target="_blank">
+
+      <div class="form-group">
+        <label class="form-label">Workers</label>
+        <select name="workers" class="form-control" multiple size="6">
+          {% for w in workers %}
+          <option value="{{ w.pk }}">{{ w.name }}{% if w.designation %} — {{ w.designation }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <div style="font-size:11px;color:var(--slate-400);margin-top:4px">
+          Hold Ctrl (Windows) / Cmd (Mac) to select multiple. Leave nothing selected to include all workers.
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Date From</label>
+          <input type="date" name="date_from" class="form-control" value="{{ month_start|date:'Y-m-d' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date To</label>
+          <input type="date" name="date_to" class="form-control" value="{{ today|date:'Y-m-d' }}">
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="form-label" style="margin-bottom:8px">Extra Options</div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate-600);cursor:pointer">
+          <input type="checkbox" name="include_notes" value="1" checked style="width:15px;height:15px;accent-color:var(--orange)">
+          Include Notes column
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate-600);cursor:pointer">
+          <input type="checkbox" name="include_summary" value="1" checked style="width:15px;height:15px;accent-color:var(--orange)">
+          Include auto-calculated summary section (totals per worker)
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sort Order</label>
+        <select name="sort_by" class="form-control" style="max-width:260px">
+          <option value="worker">Group by Worker, then Date</option>
+          <option value="date">Chronological (Date, then Worker)</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Export Report</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

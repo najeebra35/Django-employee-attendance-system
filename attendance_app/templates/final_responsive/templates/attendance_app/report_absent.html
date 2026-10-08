@@ -1,0 +1,91 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Absent Report{% endblock %}
+{% block page_title %}Absent Frequency Report{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">🔴 Absent Frequency — {{ month_name }}</div>
+    <div class="page-header-sub">{{ working_days }} working days this month</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'reports' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Reports</a>
+    <a href="{% url 'report_absent_export' %}?year={{ year }}&month={{ month }}&employee={{ selected_emp }}" class="btn btn-primary" style="background:#dc2626;border-color:#dc2626">
+      <i class="fas fa-file-excel"></i> Export Excel
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:18px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Year</label>
+        <select name="year" class="form-control" style="width:90px;font-size:13px">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Month</label>
+        <select name="month" class="form-control" style="width:130px;font-size:13px">
+          {% for mn, ml in months %}<option value="{{ mn }}" {% if mn == month %}selected{% endif %}>{{ ml }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Employee</label>
+        <select name="employee" class="form-control" style="width:180px;font-size:13px">
+          <option value="">All Employees</option>
+          {% for emp in employees %}<option value="{{ emp.pk }}" {% if emp.pk|stringformat:'s' == selected_emp %}selected{% endif %}>{{ emp.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="font-size:13px"><i class="fas fa-filter"></i> Apply</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Employee</th>
+          <th style="text-align:center">Present Days</th>
+          <th style="text-align:center">Absent Days</th>
+          <th style="text-align:center">Leave Days</th>
+          <th style="text-align:center;width:130px">Absent Rate</th>
+          <th>Absent Dates</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr style="{% if row.absent_rate >= 30 %}background:rgba(254,242,242,.4){% endif %}">
+          <td style="font-size:11px;color:var(--slate-400);font-weight:600">{{ forloop.counter }}</td>
+          <td>
+            <div style="font-weight:700;color:var(--slate-900);font-size:13px">{{ row.employee.name }}</div>
+            {% if row.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ row.employee.job_title }}</div>{% endif %}
+          </td>
+          <td style="text-align:center"><span class="badge badge-green" style="font-size:12px">{{ row.present }}</span></td>
+          <td style="text-align:center">
+            <span class="badge badge-red" style="font-size:{% if row.absent >= 5 %}14{% else %}12{% endif %}px;font-weight:800">{{ row.absent }}</span>
+          </td>
+          <td style="text-align:center"><span class="badge badge-purple" style="font-size:12px">{{ row.leave }}</span></td>
+          <td style="text-align:center">
+            <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--slate-100);overflow:hidden;max-width:50px">
+                <div style="height:100%;border-radius:3px;width:{{ row.absent_rate }}%;background:{% if row.absent_rate >= 30 %}#ef4444{% elif row.absent_rate >= 15 %}#f59e0b{% else %}#22c55e{% endif %}"></div>
+              </div>
+              <span style="font-size:12px;font-weight:800;color:{% if row.absent_rate >= 30 %}#dc2626{% elif row.absent_rate >= 15 %}#d97706{% else %}#16a34a{% endif %}">{{ row.absent_rate }}%</span>
+            </div>
+          </td>
+          <td style="font-size:11px">
+            {% for d in row.absent_dates %}<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#dc2626;font-weight:600;margin:2px">{{ d|date:"d M" }}</span>{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

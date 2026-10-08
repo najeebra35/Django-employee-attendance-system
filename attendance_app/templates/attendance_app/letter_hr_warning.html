@@ -1,0 +1,103 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{% if rec %}Edit{% else %}New{% endif %} Warning Letter{% endblock %}
+{% block page_title %}{% if rec %}Edit{% else %}New{% endif %} Warning Letter{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{% if rec %}Edit{% else %}New{% endif %} Warning / Disciplinary Letter</div>
+    <div class="page-header-sub">Issued by HR — formal notice of a policy or conduct violation</div>
+  </div>
+  <a href="{% if rec %}{% url 'letter_detail' rec.pk %}{% else %}{% url 'letter_hub' %}{% endif %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="post" id="letterForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" class="form-control" required>
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}" {% if preselect_emp == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if rec %}
+      <div class="form-group">
+        <label class="form-label">Reference No</label>
+        <input type="text" class="form-control" readonly value="{{ rec.reference_no }}">
+      </div>
+      {% endif %}
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Warning Level <span class="req">*</span></label>
+          <select name="warning_level" class="form-control" required>
+            {% for lvl in warning_levels %}
+            <option value="{{ lvl }}" {% if initial.warning_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Incident Date <span class="req">*</span></label>
+          <input type="date" name="incident_date" class="form-control" required value="{{ initial.incident_date|default:'' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Violation Type <span class="req">*</span></label>
+        <select name="violation_type" class="form-control" required onchange="toggleCustom()" id="violationSelect">
+          <option value="">Select Violation Type</option>
+          {% for v in violation_types %}
+          <option value="{{ v }}" {% if initial.violation_type == v %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" id="customWrap" style="display:none">
+        <label class="form-label">Specify Violation <span class="req">*</span></label>
+        <input type="text" name="violation_type_custom" class="form-control" placeholder="e.g. Unauthorized use of equipment" value="{{ initial.violation_type|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description of Incident</label>
+        <textarea name="description" class="form-control" rows="3" placeholder="Describe what happened">{{ initial.description|default:'' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Required Corrective Action</label>
+        <textarea name="corrective_action" class="form-control" rows="2" placeholder="Optional — what the employee needs to do going forward">{{ initial.corrective_action|default:'' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Letter / Issue Date</label>
+        <input type="date" name="letter_date" class="form-control" value="{{ initial.letter_date|default:'' }}">
+      </div>
+
+      <div class="divider"></div>
+      <div class="actions-row">
+        <button type="submit" name="action" value="docx" class="btn btn-primary"><i class="fas fa-file-word"></i> Download Word</button>
+        <button type="submit" name="action" value="pdf" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        {% if rec %}
+        <button type="submit" name="action" value="save" class="btn btn-outline"><i class="fas fa-save"></i> Save Only</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCustom(){
+  var v = document.getElementById('violationSelect').value;
+  document.getElementById('customWrap').style.display = (v === 'Other') ? 'block' : 'none';
+}
+document.addEventListener("DOMContentLoaded", toggleCustom);
+</script>
+{% endblock %}

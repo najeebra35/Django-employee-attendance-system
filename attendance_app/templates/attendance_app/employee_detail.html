@@ -1,0 +1,808 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ employee.name }}{% endblock %}
+{% block page_title %}Employee Detail{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Profile header ── */
+.profile-header {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--slate-200);
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.profile-photo {
+  width: 80px; height: 80px;
+  border-radius: 16px;
+  background: var(--orange);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 32px; font-weight: 800;
+  flex-shrink: 0; overflow: hidden;
+}
+.profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name  { font-size: 22px; font-weight: 800; color: var(--slate-900); }
+.profile-title { font-size: 13px; color: var(--slate-500); margin-top: 3px; }
+.profile-meta  { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+.profile-meta-item { font-size: 12px; color: var(--slate-500); display: flex; align-items: center; gap: 5px; }
+.profile-meta-item i { color: var(--orange); }
+.profile-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+
+/* ── Tabs ── */
+.detail-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 2px solid var(--slate-200);
+  margin-bottom: 24px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.detail-tabs::-webkit-scrollbar { display: none; }
+.detail-tab {
+  padding: 11px 20px;
+  font-size: 13px; font-weight: 600;
+  color: var(--slate-500);
+  background: none; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all .18s;
+  font-family: inherit;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.detail-tab:hover { color: var(--orange); }
+.detail-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+/* ── Info grid ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.info-item label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--slate-400); display: block; margin-bottom: 3px;
+}
+.info-item span {
+  font-size: 13px; font-weight: 600; color: var(--slate-800);
+}
+
+/* ── Document cards ── */
+.doc-card {
+  background: white;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 12px;
+  padding: 16px;
+  transition: box-shadow .2s, border-color .2s;
+  position: relative;
+}
+.doc-card:hover { box-shadow: var(--shadow-md); border-color: var(--slate-300); }
+.doc-card.expired  { border-color: #fecaca; background: #fff5f5; }
+.doc-card.expiring { border-color: #fde68a; background: #fffbeb; }
+.doc-card.valid    { border-color: #bbf7d0; }
+
+.doc-type-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--orange-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--orange);
+  flex-shrink: 0;
+}
+.doc-status-badge {
+  position: absolute; top: 12px; right: 12px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 10px; font-weight: 700;
+}
+.doc-status-badge.valid    { background: #dcfce7; color: #16a34a; }
+.doc-status-badge.expiring { background: #fef3c7; color: #d97706; }
+.doc-status-badge.expired  { background: #fee2e2; color: #dc2626; }
+
+/* ── Add document form ── */
+.add-doc-form {
+  background: var(--slate-50);
+  border: 1.5px dashed var(--slate-300);
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 20px;
+  display: none;
+}
+.add-doc-form.open { display: block; }
+
+/* ── Attendance mini calendar ── */
+.att-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin: 1px;
+}
+
+/* ── Responsive ── */
+@media(max-width:768px) {
+  .profile-header { flex-direction: column; }
+  .profile-actions { margin-left: 0; width: 100%; }
+  .profile-actions .btn { flex: 1; justify-content: center; }
+  .info-grid { grid-template-columns: 1fr; }
+  .profile-name { font-size: 18px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Profile Header -->
+<div class="profile-header">
+  <div class="profile-photo">
+    {% if employee.photo %}
+      <img src="{{ employee.photo.url }}" alt="{{ employee.name }}">
+    {% else %}
+      {{ employee.name|first|upper }}
+    {% endif %}
+  </div>
+
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="profile-name">{{ employee.name }}</div>
+      {% if employee.status == 'active' %}
+        <span class="badge badge-green">Active</span>
+      {% else %}
+        <span class="badge badge-gray">Disabled</span>
+      {% endif %}
+      <span class="badge badge-blue">{{ employee.get_emp_type_display }}</span>
+    </div>
+    <div class="profile-title">{{ employee.job_title|default:"No job title set" }}</div>
+    <div class="profile-meta">
+      {% if employee.mobile %}
+        <span class="profile-meta-item"><i class="fas fa-phone"></i> {{ employee.mobile }}</span>
+      {% endif %}
+      {% if employee.emirates_id %}
+        <span class="profile-meta-item"><i class="fas fa-id-card"></i> {{ employee.emirates_id }}</span>
+      {% endif %}
+      {% if employee.joining_date %}
+        <span class="profile-meta-item"><i class="fas fa-calendar"></i> Joined {{ employee.joining_date|date:"d M Y" }}</span>
+      {% endif %}
+      {% if employee.country %}
+        <span class="profile-meta-item"><i class="fas fa-globe"></i> {{ employee.country }}</span>
+      {% endif %}
+    </div>
+    <!-- Month quick stats -->
+    <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+      <div style="padding:7px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#16a34a">{{ month_present }}</div>
+        <div style="font-size:10px;color:#16a34a;font-weight:600">Present</div>
+      </div>
+      <div style="padding:7px 14px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#dc2626">{{ month_absent }}</div>
+        <div style="font-size:10px;color:#dc2626;font-weight:600">Absent</div>
+      </div>
+      <div style="padding:7px 14px;border-radius:8px;background:#f5f3ff;border:1px solid #ddd6fe;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#7e22ce">{{ month_leave }}</div>
+        <div style="font-size:10px;color:#7e22ce;font-weight:600">Leave</div>
+      </div>
+      {% if doc_expired > 0 %}
+      <div style="padding:7px 14px;border-radius:8px;background:#fee2e2;border:1px solid #fecaca;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#dc2626">{{ doc_expired }}</div>
+        <div style="font-size:10px;color:#dc2626;font-weight:600">Doc Expired</div>
+      </div>
+      {% endif %}
+      {% if doc_expiring > 0 %}
+      <div style="padding:7px 14px;border-radius:8px;background:#fef3c7;border:1px solid #fde68a;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#d97706">{{ doc_expiring }}</div>
+        <div style="font-size:10px;color:#d97706;font-weight:600">Expiring</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="profile-actions">
+    {% if 'employee_edit' in user_perms or is_admin %}
+    <a href="{% url 'employee_edit' employee.pk %}" class="btn btn-primary">
+      <i class="fas fa-pen"></i> Edit
+    </a>
+    {% endif %}
+    {% if 'letter_view' in user_perms or is_admin %}
+    <a href="?tab=letters" class="btn btn-outline">
+      <i class="fas fa-file-signature"></i> Letters
+    </a>
+    {% endif %}
+    <a href="{% url 'employee_list' %}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Back
+    </a>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="detail-tabs">
+  <a href="?tab=overview"   class="detail-tab {% if active_tab == 'overview' %}active{% endif %}">
+    <i class="fas fa-user"></i> Overview
+  </a>
+  <a href="?tab=attendance" class="detail-tab {% if active_tab == 'attendance' %}active{% endif %}">
+    <i class="fas fa-calendar-check"></i> Attendance
+  </a>
+  <a href="?tab=leaves"     class="detail-tab {% if active_tab == 'leaves' %}active{% endif %}">
+    <i class="fas fa-plane-departure"></i> Leaves
+  </a>
+  <a href="?tab=documents"  class="detail-tab {% if active_tab == 'documents' %}active{% endif %}">
+    <i class="fas fa-folder-open"></i> Documents
+    {% if doc_expired > 0 %}
+      <span style="background:#dc2626;color:white;border-radius:10px;padding:1px 6px;font-size:10px">{{ doc_expired }}</span>
+    {% elif doc_expiring > 0 %}
+      <span style="background:#d97706;color:white;border-radius:10px;padding:1px 6px;font-size:10px">{{ doc_expiring }}</span>
+    {% else %}
+      <span style="background:var(--slate-200);color:var(--slate-600);border-radius:10px;padding:1px 6px;font-size:10px">{{ employee_docs|length }}</span>
+    {% endif %}
+  </a>
+  <a href="?tab=letters"    class="detail-tab {% if active_tab == 'letters' %}active{% endif %}">
+    <i class="fas fa-file-signature"></i> Letters
+    <span style="background:var(--slate-200);color:var(--slate-600);border-radius:10px;padding:1px 6px;font-size:10px">{{ employee.letters.count }}</span>
+  </a>
+  <a href="?tab=settlements" class="detail-tab {% if active_tab == 'settlements' %}active{% endif %}">
+    <i class="fas fa-hand-holding-dollar"></i> Settlements
+    <span style="background:var(--slate-200);color:var(--slate-600);border-radius:10px;padding:1px 6px;font-size:10px">{{ employee.settlements.count }}</span>
+  </a>
+  <a href="?tab=activity"   class="detail-tab {% if active_tab == 'activity' %}active{% endif %}">
+    <i class="fas fa-clock-rotate-left"></i> Activity
+  </a>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     TAB: OVERVIEW
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'overview' %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-user" style="color:var(--orange)"></i> Personal Information</span>
+  </div>
+  <div class="card-body">
+    <div class="info-grid">
+      <div class="info-item">
+        <label>Full Name</label>
+        <span>{{ employee.name }}</span>
+      </div>
+      <div class="info-item">
+        <label>Job Title</label>
+        <span>{{ employee.job_title|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Emirates ID</label>
+        <span style="font-family:monospace">{{ employee.emirates_id|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Mobile</label>
+        <span>{{ employee.mobile|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Date of Birth</label>
+        <span>{{ employee.dob|date:"d M Y"|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Joining Date</label>
+        <span>{{ employee.joining_date|date:"d M Y"|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Country</label>
+        <span>{{ employee.country|default:"—" }}</span>
+      </div>
+      <div class="info-item">
+        <label>Employee Type</label>
+        <span>{{ employee.get_emp_type_display }}</span>
+      </div>
+      <div class="info-item">
+        <label>Status</label>
+        <span>{% if employee.status == 'active' %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}</span>
+      </div>
+      <div class="info-item">
+        <label>Added On</label>
+        <span>{{ employee.created_at|date:"d M Y" }}</span>
+      </div>
+      {% if employee.address %}
+      <div class="info-item" style="grid-column:span 2">
+        <label>Address</label>
+        <span>{{ employee.address }}</span>
+      </div>
+      {% endif %}
+      {% if employee.description %}
+      <div class="info-item" style="grid-column:span 2">
+        <label>Notes</label>
+        <span>{{ employee.description }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: ATTENDANCE
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'attendance' %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-calendar-check" style="color:var(--orange)"></i> Recent Attendance (Last 30 records)</span>
+    <a href="{% url 'attendance_list' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div class="table-wrap">
+    {% if recent_attendance %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th><th>Day</th><th style="text-align:center">Status</th>
+          <th style="text-align:center">In Time</th><th style="text-align:center">Out Time</th>
+          <th style="text-align:center">Hours</th><th style="text-align:center">OT</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for att in recent_attendance %}
+        <tr>
+          <td style="font-weight:700;font-size:13px">{{ att.date|date:"d M Y" }}</td>
+          <td style="font-size:12px;color:var(--slate-400)">{{ att.date|date:"D" }}</td>
+          <td style="text-align:center">
+            {% if att.status == 'present' %}<span class="badge badge-green">Present</span>
+            {% elif att.status == 'absent' %}<span class="badge badge-red">Absent</span>
+            {% elif att.status == 'half_day' %}<span class="badge badge-yellow">Half Day</span>
+            {% elif att.status == 'leave' %}<span class="badge badge-purple">Leave</span>
+            {% elif att.status == 'holiday' %}<span class="badge badge-blue">Holiday</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;font-size:13px;color:#16a34a">{{ att.in_time|time:"H:i"|default:"—" }}</td>
+          <td style="text-align:center;font-size:13px;color:#2563eb">{{ att.out_time|time:"H:i"|default:"—" }}</td>
+          <td style="text-align:center;font-size:13px">{% if att.total_hours %}{{ att.total_hours }}h{% else %}—{% endif %}</td>
+          <td style="text-align:center;font-size:13px;color:#7c3aed">{% if att.ot_hours %}{{ att.ot_hours }}h{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--slate-400)">{{ att.notes|default:"" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-calendar"></i><p>No attendance records found.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: LEAVES
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'leaves' %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-plane-departure" style="color:var(--orange)"></i> Leave History</span>
+    <a href="{% url 'leave_add' %}?employee={{ employee.pk }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Add Leave</a>
+  </div>
+  <div class="table-wrap">
+    {% if leave_requests %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Leave Type</th><th>From</th><th>To</th>
+          <th style="text-align:center">Days</th><th style="text-align:center">Status</th>
+          <th>Reason</th><th>Applied On</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leave_requests %}
+        <tr>
+          <td style="font-weight:600">{{ lr.leave_type.name }}</td>
+          <td style="font-size:13px">{{ lr.start_date|date:"d M Y" }}</td>
+          <td style="font-size:13px">{{ lr.end_date|date:"d M Y" }}</td>
+          <td style="text-align:center"><span class="badge badge-blue">{{ lr.total_days }} days</span></td>
+          <td style="text-align:center">
+            {% if lr.status == 'approved' %}<span class="badge badge-green">Approved</span>
+            {% elif lr.status == 'rejected' %}<span class="badge badge-red">Rejected</span>
+            {% else %}<span class="badge badge-yellow">Pending</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--slate-500)">{{ lr.reason|truncatechars:40 }}</td>
+          <td style="font-size:12px;color:var(--slate-400)">{{ lr.applied_on|date:"d M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-plane"></i><p>No leave requests found.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: DOCUMENTS
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'documents' %}
+
+<!-- Document status summary -->
+<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+  <div style="padding:10px 16px;border-radius:10px;background:white;border:1.5px solid #bbf7d0;display:flex;align-items:center;gap:8px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>
+    <span style="font-size:13px;font-weight:700;color:#16a34a">{{ doc_valid }} Valid</span>
+  </div>
+  {% if doc_expiring > 0 %}
+  <div style="padding:10px 16px;border-radius:10px;background:white;border:1.5px solid #fde68a;display:flex;align-items:center;gap:8px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
+    <span style="font-size:13px;font-weight:700;color:#d97706">{{ doc_expiring }} Expiring Soon</span>
+  </div>
+  {% endif %}
+  {% if doc_expired > 0 %}
+  <div style="padding:10px 16px;border-radius:10px;background:white;border:1.5px solid #fecaca;display:flex;align-items:center;gap:8px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+    <span style="font-size:13px;font-weight:700;color:#dc2626">{{ doc_expired }} Expired</span>
+  </div>
+  {% endif %}
+  <div style="margin-left:auto">
+    {% if 'employee_edit' in user_perms or is_admin %}
+    <button onclick="toggleAddDocForm()" class="btn btn-primary" id="add-doc-toggle-btn">
+      <i class="fas fa-plus"></i> Add Document
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Add Document inline form -->
+{% if 'employee_edit' in user_perms or is_admin %}
+{% if not doc_types %}
+<div class="alert alert-warning">
+  <i class="fas fa-triangle-exclamation"></i>
+  <span>No document types defined yet. <a href="{% url 'doctype_list' %}" style="font-weight:700">Create document types</a> before adding documents.</span>
+</div>
+{% else %}
+<div class="add-doc-form" id="add-doc-form">
+  <div style="font-size:14px;font-weight:700;color:var(--slate-800);margin-bottom:16px">
+    <i class="fas fa-file-circle-plus" style="color:var(--orange)"></i> Add New Document for {{ employee.name }}
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="add_document" value="1">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group">
+        <label class="form-label">Document Type <span style="color:#dc2626">*</span></label>
+        <select name="doc_type" class="form-control" required id="doc-type-sel" onchange="checkExpiryRequired(this)">
+          <option value="">— Select Type —</option>
+          {% for dt in doc_types %}
+          <option value="{{ dt.pk }}" data-req="{{ dt.requires_expiry|yesno:'1,0' }}" data-alert="{{ dt.alert_days }}">
+            {{ dt.name }}{% if not dt.requires_expiry %} (no expiry){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Document / Reference Number</label>
+        <input type="text" name="doc_number" class="form-control" placeholder="e.g. A12345678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Issue Date</label>
+        <input type="date" name="issue_date" class="form-control">
+      </div>
+      <div class="form-group" id="expiry-group">
+        <label class="form-label">Expiry Date <span id="exp-req" style="color:#dc2626">*</span></label>
+        <input type="date" name="expiry_date" class="form-control" id="expiry-input">
+        <div id="alert-hint" style="font-size:11px;color:var(--slate-400);margin-top:3px"></div>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Attach File <span style="font-size:11px;color:var(--slate-400)">(PDF, JPG, PNG, DOC — max 10MB)</span></label>
+        <input type="file" name="doc_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding-top:4px">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Document</button>
+      <button type="button" class="btn btn-secondary" onclick="toggleAddDocForm()">Cancel</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Documents grid -->
+{% if employee_docs %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+  {% for doc in employee_docs %}
+  <div class="doc-card {{ doc.status }}">
+    <span class="doc-status-badge {{ doc.status }}">
+      {% if doc.status == 'valid' %}<i class="fas fa-circle-check"></i> Valid
+      {% elif doc.status == 'expiring' %}<i class="fas fa-clock"></i> Expiring
+      {% elif doc.status == 'expired' %}<i class="fas fa-circle-xmark"></i> Expired
+      {% endif %}
+    </span>
+
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;padding-right:80px">
+      <div class="doc-type-icon">
+        <i class="fas fa-{% if 'passport' in doc.doc_type.name|lower %}passport{% elif 'visa' in doc.doc_type.name|lower %}stamp{% elif 'id' in doc.doc_type.name|lower or 'emirates' in doc.doc_type.name|lower %}id-card{% elif 'license' in doc.doc_type.name|lower %}car{% elif 'insurance' in doc.doc_type.name|lower %}shield-heart{% elif 'labour' in doc.doc_type.name|lower or 'labor' in doc.doc_type.name|lower %}hard-hat{% else %}file-lines{% endif %}"></i>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--slate-900)">{{ doc.doc_type.name }}</div>
+        {% if doc.doc_number %}
+        <div style="font-size:12px;font-family:monospace;color:var(--slate-500);margin-top:2px">{{ doc.doc_number }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      {% if doc.issue_date %}
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Issue Date</div>
+        <div style="font-size:12px;font-weight:600;color:var(--slate-700)">{{ doc.issue_date|date:"d M Y" }}</div>
+      </div>
+      {% endif %}
+      {% if doc.expiry_date %}
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400)">Expiry Date</div>
+        <div style="font-size:12px;font-weight:600;color:{% if doc.status == 'expired' %}#dc2626{% elif doc.status == 'expiring' %}#d97706{% else %}var(--slate-700){% endif %}">
+          {{ doc.expiry_date|date:"d M Y" }}
+        </div>
+        {% if doc.days_until_expiry is not None %}
+        <div style="font-size:10px;color:{% if doc.days_until_expiry < 0 %}#dc2626{% elif doc.days_until_expiry <= 30 %}#d97706{% else %}var(--slate-400){% endif %}">
+          {% if doc.days_until_expiry < 0 %}
+            {{ doc.days_until_expiry|stringformat:"d"|cut:"-" }} days overdue
+          {% elif doc.days_until_expiry == 0 %}
+            Expires today!
+          {% else %}
+            {{ doc.days_until_expiry }} days left
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if doc.notes %}
+    <div style="font-size:11px;color:var(--slate-400);border-top:1px solid var(--slate-100);padding-top:8px;margin-bottom:10px">
+      {{ doc.notes }}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:6px;align-items:center;border-top:1px solid var(--slate-100);padding-top:10px">
+      {% if doc.file %}
+      <a href="{% url 'document_download' doc.pk %}" class="btn btn-sm btn-outline" title="Download file">
+        <i class="fas fa-download"></i>
+        <span style="font-size:10px;font-weight:700">{{ doc.file_extension|upper }}</span>
+      </a>
+      {% else %}
+      <span style="font-size:11px;color:var(--slate-300)"><i class="fas fa-paperclip"></i> No file</span>
+      {% endif %}
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <a href="{% url 'document_edit' doc.pk %}?return={{ employee.pk }}" class="btn btn-sm btn-outline" title="Edit">
+          <i class="fas fa-pen"></i>
+        </a>
+        <form method="post" action="{% url 'document_delete' doc.pk %}"
+              onsubmit="return confirm('Delete {{ doc.doc_type.name }}?')" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="return_employee" value="{{ employee.pk }}">
+          <button type="submit" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Delete">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-folder-open"></i>
+    <p>No documents added for {{ employee.name }} yet.</p>
+    {% if 'employee_edit' in user_perms or is_admin %}
+    <button onclick="toggleAddDocForm()" class="btn btn-primary" style="margin-top:12px">
+      <i class="fas fa-plus"></i> Add First Document
+    </button>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: LETTERS
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'letters' %}
+<div class="card">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <span class="card-title">Letters</span>
+    {% if 'letter_view' in user_perms or is_admin %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if 'letter_request' in user_perms or is_admin %}
+      <a href="{% url 'letter_request_salary' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> Salary Hike Request</a>
+      <a href="{% url 'letter_request_leave' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> Leave Request</a>
+      {% endif %}
+      {% if 'letter_hr' in user_perms or is_admin %}
+      <a href="{% url 'letter_hr_hike_approval' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> Hike Approval</a>
+      <a href="{% url 'letter_hr_experience' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> Experience Letter</a>
+      <a href="{% url 'letter_hr_noc' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> NOC Letter</a>
+      <a href="{% url 'letter_hr_warning' %}?employee={{ employee.pk }}" class="btn btn-sm btn-outline"><i class="fas fa-plus"></i> Warning Letter</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Letter Type</th><th>Category</th><th>Reference No</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for log in employee.letters.all %}
+        <tr>
+          <td>{{ log.get_letter_type_display }}</td>
+          <td>{% if log.category == 'hr' %}<span class="badge badge-purple">HR</span>{% else %}<span class="badge badge-blue">Request</span>{% endif %}</td>
+          <td>{{ log.reference_no|default:"—" }}</td>
+          <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <a href="{% url 'letter_detail' log.pk %}" class="btn btn-sm btn-secondary" title="View"><i class="fas fa-eye"></i></a>
+              <a href="{% url 'letter_download' log.pk 'docx' %}" class="btn btn-sm btn-secondary" title="Download Word"><i class="fas fa-file-word"></i></a>
+              <a href="{% url 'letter_download' log.pk 'pdf' %}" class="btn btn-sm btn-secondary" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
+              <form method="post" action="{% url 'letter_delete' log.pk %}" onsubmit="return confirm('Delete this letter record? This cannot be undone.');" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="return_to" value="employee">
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No letters generated for this employee yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: SETTLEMENTS
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'settlements' %}
+<div class="card">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <span class="card-title">Settlements</span>
+    {% if 'settlement_manage' in user_perms or is_admin %}
+    <a href="{% url 'settlement_add' %}?employee={{ employee.pk }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> New Settlement</a>
+    {% endif %}
+  </div>
+
+  {% with last_settlement=employee.settlements.first %}
+  {% if last_settlement %}
+  <div style="padding:16px 20px;background:#fff3e8;border-bottom:1px solid var(--slate-200)">
+    <div style="font-size:11px;font-weight:700;color:var(--orange);margin-bottom:8px;text-transform:uppercase">Last Settlement</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+      <div><div style="font-size:10px;color:var(--slate-500)">Period</div><div style="font-size:13px;font-weight:700">{{ last_settlement.from_date|date:"d M Y" }} — {{ last_settlement.to_date|date:"d M Y" }}</div></div>
+      <div><div style="font-size:10px;color:var(--slate-500)">OT Amount</div><div style="font-size:13px;font-weight:700">AED {{ last_settlement.ot_amount|floatformat:2 }}</div></div>
+      <div><div style="font-size:10px;color:var(--slate-500)">Leave Days</div><div style="font-size:13px;font-weight:700">{{ last_settlement.leave_days|floatformat:1 }}</div></div>
+      <div><div style="font-size:10px;color:var(--slate-500)">Leave Deduction</div><div style="font-size:13px;font-weight:700">AED {{ last_settlement.leave_deduction_amount|floatformat:2 }}</div></div>
+      <div><div style="font-size:10px;color:var(--slate-500)">Net Amount</div><div style="font-size:14px;font-weight:800;color:var(--orange)">AED {{ last_settlement.net_amount|floatformat:2 }}</div></div>
+      <div><div style="font-size:10px;color:var(--slate-500)">Settlement Date</div><div style="font-size:13px;font-weight:700">{{ last_settlement.settlement_date|date:"d M Y" }}</div></div>
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Period</th><th>OT Amount</th><th>Leave Days</th><th>Leave Deduction</th><th>Net Amount</th><th>Settlement Date</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for s in employee.settlements.all %}
+        <tr>
+          <td>{{ s.from_date|date:"d M Y" }} — {{ s.to_date|date:"d M Y" }}</td>
+          <td>AED {{ s.ot_amount|floatformat:2 }}</td>
+          <td>{{ s.leave_days|floatformat:1 }}</td>
+          <td>AED {{ s.leave_deduction_amount|floatformat:2 }}</td>
+          <td style="font-weight:700;color:var(--orange)">AED {{ s.net_amount|floatformat:2 }}</td>
+          <td>{{ s.settlement_date|date:"d M Y" }}</td>
+          <td>
+            {% if 'settlement_manage' in user_perms or is_admin %}
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'settlement_edit' s.pk %}" class="btn btn-sm btn-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'settlement_delete' s.pk %}" onsubmit="return confirm('Delete this settlement record? This cannot be undone.');" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="return_to" value="employee">
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state"><i class="fas fa-hand-holding-dollar"></i><p>No settlements recorded for this employee yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════
+     TAB: ACTIVITY
+══════════════════════════════════════════════════ -->
+{% if active_tab == 'activity' %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-clock-rotate-left" style="color:var(--orange)"></i> Recent Activity</span>
+  </div>
+  <div class="table-wrap">
+    {% if activities %}
+    <table class="data-table">
+      <thead>
+        <tr><th>Date & Time</th><th>User</th><th>Action</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for log in activities %}
+        <tr>
+          <td style="font-size:12px;white-space:nowrap">{{ log.timestamp|date:"d M Y H:i" }}</td>
+          <td style="font-size:12px;font-weight:600">{{ log.user.username|default:"System" }}</td>
+          <td>
+            <span class="badge
+              {% if log.action == 'create' %}badge-green
+              {% elif log.action == 'update' %}badge-blue
+              {% elif log.action == 'delete' %}badge-red
+              {% else %}badge-gray{% endif %}"
+              style="font-size:10px">{{ log.get_action_display }}</span>
+          </td>
+          <td style="font-size:12px;color:var(--slate-500)">{{ log.description|truncatechars:80 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-clock"></i><p>No activity found.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAddDocForm() {
+  var form = document.getElementById('add-doc-form');
+  var btn  = document.getElementById('add-doc-toggle-btn');
+  if (!form) return;
+  if (form.classList.contains('open')) {
+    form.classList.remove('open');
+    if (btn) btn.innerHTML = '<i class="fas fa-plus"></i> Add Document';
+  } else {
+    form.classList.add('open');
+    if (btn) btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function checkExpiryRequired(sel) {
+  var opt   = sel.options[sel.selectedIndex];
+  var req   = opt.getAttribute('data-req');
+  var alert = opt.getAttribute('data-alert');
+  var hint  = document.getElementById('alert-hint');
+  var star  = document.getElementById('exp-req');
+  if (req === '0') {
+    if (hint) hint.textContent = 'This document type has no expiry date';
+    if (star) star.style.display = 'none';
+  } else {
+    if (hint) hint.textContent = alert ? 'Alert will trigger ' + alert + ' days before expiry' : '';
+    if (star) star.style.display = '';
+  }
+}
+
+// Auto-open form if returning from a save error
+{% if active_tab == 'documents' and messages %}
+{% for message in messages %}
+{% if 'error' in message.tags %}
+var f = document.getElementById('add-doc-form');
+if (f) f.classList.add('open');
+{% endif %}
+{% endfor %}
+{% endif %}
+
+// Open add form if ?add=1 in URL
+if (window.location.search.indexOf('add=1') !== -1) {
+  var f = document.getElementById('add-doc-form');
+  if (f) { f.classList.add('open'); }
+}
+</script>
+{% endblock %}

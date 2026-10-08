@@ -1,0 +1,233 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Login | AttendPro</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: #0f172a;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-pattern {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(249,115,22,.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(249,115,22,.08) 0%, transparent 40%);
+}
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.login-card {
+  position: relative;
+  z-index: 10;
+  background: rgba(30,41,59,.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 400px;
+  box-shadow: 0 25px 60px rgba(0,0,0,.4);
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.logo-box {
+  width: 48px; height: 48px;
+  background: #f97316;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+
+.login-logo .brand {
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+}
+
+.login-logo .sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 6px;
+}
+
+.sub-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 28px;
+}
+
+.form-group { margin-bottom: 18px; }
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 7px;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap i {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #475569;
+  font-size: 14px;
+}
+
+input[type=text], input[type=password] {
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 11px 14px 11px 38px;
+  color: white;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+
+input:focus { border-color: #f97316; background: rgba(249,115,22,.06); }
+input::placeholder { color: #475569; }
+
+.btn-login {
+  width: 100%;
+  background: #f97316;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .2s, transform .1s;
+  margin-top: 8px;
+}
+
+.btn-login:hover { background: #ea580c; }
+.btn-login:active { transform: scale(.99); }
+
+.error-msg {
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.3);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-text {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 12px;
+  color: #334155;
+}
+
+/* ── LOGIN MOBILE ── */
+@media(max-width:768px){
+  body{align-items:flex-start;}
+  .login-outer{min-height:100vh;padding:30px 16px;justify-content:flex-start;padding-top:60px;}
+  .login-card{width:100%;max-width:100%;padding:28px 20px;border-radius:16px;}
+  .login-logo{margin-bottom:20px;}
+  .login-title{font-size:20px;}
+  input[type=text],input[type=password],input[type=email]{font-size:16px!important;}
+  .login-btn{width:100%;justify-content:center;padding:13px;}
+}
+@media(max-width:480px){
+  .login-outer{padding:20px 12px;padding-top:40px;}
+  .login-card{padding:22px 16px;}
+}
+</style>
+<style>
+@media(max-width:768px){
+  .login-wrap{min-height:100vh;padding:20px 16px;align-items:flex-start;padding-top:40px;}
+  .login-card{padding:28px 20px;border-radius:16px;width:100%;}
+  .login-logo{margin-bottom:20px;}
+}
+</style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="bg-grid"></div>
+
+<div class="login-card">
+  <div class="login-logo">
+    <div class="logo-box">🏢</div>
+    <div>
+      <div class="brand">AttendPro</div>
+      <div class="sub">Attendance Management System</div>
+    </div>
+  </div>
+
+  <h2>Welcome back</h2>
+  <p class="sub-text">Sign in to your account to continue</p>
+
+  {% for message in messages %}
+  <div class="error-msg"><i class="fas fa-circle-exclamation"></i> {{ message }}</div>
+  {% endfor %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Username</label>
+      <div class="input-wrap">
+        <i class="fas fa-user"></i>
+        <input type="text" name="username" placeholder="Enter username" autocomplete="username" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <i class="fas fa-lock"></i>
+        <input type="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-login"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+  </form>
+
+  <div class="footer-text">AttendPro &copy; {% now "Y" %}</div>
+</div>
+</body>
+</html>

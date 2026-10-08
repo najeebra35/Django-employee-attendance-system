@@ -1,0 +1,164 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Documents{% endblock %}
+{% block page_title %}Document Management{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">🗂️ Documents</div>
+    <div class="page-header-sub">{{ docs|length }} document{{ docs|length|pluralize }} shown</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if alert_count > 0 %}
+    <a href="{% url 'document_expiring' %}" class="btn" style="background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca;font-size:13px">
+      <i class="fas fa-triangle-exclamation"></i> {{ alert_count }} Alert{{ alert_count|pluralize }}
+    </a>
+    {% endif %}
+    <a href="{% url 'doctype_list' %}" class="btn btn-secondary"><i class="fas fa-tags"></i> Doc Types</a>
+    <a href="{% url 'document_add' %}{% if selected_emp %}?employee={{ selected_emp }}{% endif %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Document</a>
+  </div>
+</div>
+
+<!-- Status pills -->
+<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+  <a href="?{% if selected_emp %}employee={{ selected_emp }}&{% endif %}{% if selected_type %}doc_type={{ selected_type }}&{% endif %}" style="text-decoration:none">
+    <div style="padding:10px 16px;border-radius:10px;background:white;border:2px solid {% if not selected_status %}var(--orange){% else %}var(--slate-200){% endif %};box-shadow:var(--shadow);display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--slate-600)">All</span>
+      <span style="background:var(--slate-100);color:var(--slate-600);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700">{{ valid_count|add:expiring_count|add:expired_count }}</span>
+    </div>
+  </a>
+  <a href="?status=valid{% if selected_emp %}&employee={{ selected_emp }}{% endif %}{% if selected_type %}&doc_type={{ selected_type }}{% endif %}" style="text-decoration:none">
+    <div style="padding:10px 16px;border-radius:10px;background:white;border:2px solid {% if selected_status == 'valid' %}#16a34a{% else %}var(--slate-200){% endif %};box-shadow:var(--shadow);display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>
+      <span style="font-size:12px;font-weight:700;color:#16a34a">Valid</span>
+      <span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700">{{ valid_count }}</span>
+    </div>
+  </a>
+  <a href="?status=expiring{% if selected_emp %}&employee={{ selected_emp }}{% endif %}{% if selected_type %}&doc_type={{ selected_type }}{% endif %}" style="text-decoration:none">
+    <div style="padding:10px 16px;border-radius:10px;background:white;border:2px solid {% if selected_status == 'expiring' %}#d97706{% else %}var(--slate-200){% endif %};box-shadow:var(--shadow);display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
+      <span style="font-size:12px;font-weight:700;color:#d97706">Expiring Soon</span>
+      <span style="background:#fef3c7;color:#d97706;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700">{{ expiring_count }}</span>
+    </div>
+  </a>
+  <a href="?status=expired{% if selected_emp %}&employee={{ selected_emp }}{% endif %}{% if selected_type %}&doc_type={{ selected_type }}{% endif %}" style="text-decoration:none">
+    <div style="padding:10px 16px;border-radius:10px;background:white;border:2px solid {% if selected_status == 'expired' %}#dc2626{% else %}var(--slate-200){% endif %};box-shadow:var(--shadow);display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+      <span style="font-size:12px;font-weight:700;color:#dc2626">Expired</span>
+      <span style="background:#fee2e2;color:#dc2626;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700">{{ expired_count }}</span>
+    </div>
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:18px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
+      <div class="input-icon-wrap" style="min-width:180px;flex:1">
+        <i class="fas fa-search"></i>
+        <input type="text" name="q" class="form-control" placeholder="Search employee or doc number…" value="{{ q }}">
+      </div>
+      <select name="employee" class="form-control" style="width:180px">
+        <option value="">All Employees</option>
+        {% for emp in employees %}<option value="{{ emp.pk }}" {% if emp.pk|stringformat:'s' == selected_emp %}selected{% endif %}>{{ emp.name }}</option>{% endfor %}
+      </select>
+      <select name="doc_type" class="form-control" style="width:160px">
+        <option value="">All Types</option>
+        {% for dt in doc_types %}<option value="{{ dt.pk }}" {% if dt.pk|stringformat:'s' == selected_type %}selected{% endif %}>{{ dt.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary" style="font-size:13px"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{% url 'document_list' %}" class="btn btn-secondary" style="font-size:13px">Clear</a>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-wrap">
+    {% if docs %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Document Type</th>
+          <th>Doc Number</th>
+          <th style="text-align:center">Issue Date</th>
+          <th style="text-align:center">Expiry Date</th>
+          <th style="text-align:center">Status</th>
+          <th style="text-align:center">File</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in docs %}
+        <tr style="{% if doc.status == 'expired' %}background:rgba(254,242,242,.4){% elif doc.status == 'expiring' %}background:rgba(255,251,235,.4){% endif %}">
+          <td>
+            <div style="font-weight:700;color:var(--slate-900);font-size:13px">{{ doc.employee.name }}</div>
+            {% if doc.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ doc.employee.job_title }}</div>{% endif %}
+          </td>
+          <td>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px">
+              <i class="fas fa-{% if 'passport' in doc.doc_type.name|lower %}passport{% elif 'visa' in doc.doc_type.name|lower %}stamp{% elif 'id' in doc.doc_type.name|lower or 'emirates' in doc.doc_type.name|lower %}id-card{% elif 'license' in doc.doc_type.name|lower %}car{% else %}file-lines{% endif %}" style="color:var(--orange)"></i>
+              {{ doc.doc_type.name }}
+            </span>
+          </td>
+          <td style="font-family:monospace;font-size:13px;color:var(--slate-600)">{{ doc.doc_number|default:"—" }}</td>
+          <td style="text-align:center;font-size:13px">{{ doc.issue_date|date:"d M Y"|default:"—" }}</td>
+          <td style="text-align:center">
+            {% if doc.expiry_date %}
+              <div style="font-size:13px;font-weight:700;color:{% if doc.status == 'expired' %}#dc2626{% elif doc.status == 'expiring' %}#d97706{% else %}var(--slate-700){% endif %}">
+                {{ doc.expiry_date|date:"d M Y" }}
+              </div>
+              {% if doc.days_until_expiry is not None %}
+              <div style="font-size:10px;color:{% if doc.days_until_expiry < 0 %}#dc2626{% elif doc.days_until_expiry <= 30 %}#d97706{% else %}var(--slate-400){% endif %}">
+                {% if doc.days_until_expiry < 0 %}{{ doc.days_until_expiry|floatformat:0|cut:"-" }} days ago{% elif doc.days_until_expiry == 0 %}Expires today{% else %}{{ doc.days_until_expiry }} days left{% endif %}
+              </div>
+              {% endif %}
+            {% else %}
+              <span style="color:var(--slate-300);font-size:13px">No expiry</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            {% if doc.status == 'valid' %}<span class="badge badge-green"><i class="fas fa-circle-check"></i> Valid</span>
+            {% elif doc.status == 'expiring' %}<span class="badge badge-yellow"><i class="fas fa-clock"></i> Expiring</span>
+            {% elif doc.status == 'expired' %}<span class="badge badge-red"><i class="fas fa-circle-xmark"></i> Expired</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            {% if doc.file %}
+            <a href="{% url 'document_download' doc.pk %}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;
+              {% if doc.file_extension == 'pdf' %}background:#fee2e2;color:#dc2626
+              {% elif doc.file_extension == 'image' %}background:#dbeafe;color:#1d4ed8
+              {% elif doc.file_extension == 'word' %}background:#dbeafe;color:#1d4ed8
+              {% else %}background:var(--slate-100);color:var(--slate-600){% endif %}">
+              <i class="fas fa-{% if doc.file_extension == 'pdf' %}file-pdf{% elif doc.file_extension == 'image' %}file-image{% elif doc.file_extension == 'word' %}file-word{% elif doc.file_extension == 'excel' %}file-excel{% else %}file-arrow-down{% endif %}"></i>
+              {{ doc.file_extension|upper }}
+            </a>
+            {% else %}
+            <span style="color:var(--slate-300);font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            <div style="display:flex;gap:4px;justify-content:center">
+              <a href="{% url 'document_edit' doc.pk %}" class="btn btn-sm btn-outline" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'document_delete' doc.pk %}" onsubmit="return confirm('Delete this document?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-folder-open"></i>
+      <p>No documents found{% if q %} for "{{ q }}"{% endif %}</p>
+      <a href="{% url 'document_add' %}" class="btn btn-primary" style="margin-top:12px"><i class="fas fa-plus"></i> Add First Document</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

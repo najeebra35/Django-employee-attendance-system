@@ -1,0 +1,113 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{% if rec %}Edit{% else %}New{% endif %} Leave Request Letter{% endblock %}
+{% block page_title %}{% if rec %}Edit{% else %}New{% endif %} Leave Request Letter{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{% if rec %}Edit{% else %}New{% endif %} Leave Request Letter</div>
+    <div class="page-header-sub">Select employee, leave type and date range — number of days is calculated automatically</div>
+  </div>
+  <a href="{% if rec %}{% url 'letter_detail' rec.pk %}{% else %}{% url 'letter_hub' %}{% endif %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="post" id="letterForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" id="empSelect" class="form-control" required onchange="loadEmp()">
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}" {% if preselect_emp == emp.pk|stringformat:"s" or form_data.employee == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Job Title</label>
+          <input type="text" id="jobTitle" class="form-control" readonly placeholder="Auto-filled">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emirates ID</label>
+          <input type="text" id="eid" class="form-control" readonly placeholder="Auto-filled">
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Leave Type <span class="req">*</span></label>
+          <select name="leave_type" class="form-control" required>
+            <option value="">Select Leave Type</option>
+            {% for lt in leave_types %}
+            <option value="{{ lt.pk }}" {% if initial.leave_type == lt.name %}selected{% endif %}>{{ lt.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Letter Date</label>
+          <input type="date" name="letter_date" class="form-control" value="{{ initial.letter_date|default:form_data.letter_date }}">
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label class="form-label">Start Date <span class="req">*</span></label>
+          <input type="date" name="start_date" id="startDate" class="form-control" required onchange="calcDays()" value="{{ initial.start_date|default:form_data.start_date }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date <span class="req">*</span></label>
+          <input type="date" name="end_date" id="endDate" class="form-control" required onchange="calcDays()" value="{{ initial.end_date|default:form_data.end_date }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Total Days</label>
+        <input type="text" id="totalDays" class="form-control" readonly placeholder="Auto-calculated" style="font-weight:700;color:var(--orange)">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea name="reason" class="form-control" rows="2" placeholder="Optional — reason for leave">{{ initial.reason|default:form_data.reason|default:'' }}</textarea>
+      </div>
+
+      <div class="divider"></div>
+      <div class="actions-row">
+        <button type="submit" name="action" value="docx" class="btn btn-primary"><i class="fas fa-file-word"></i> Download Word</button>
+        <button type="submit" name="action" value="pdf" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        {% if rec %}
+        <button type="submit" name="action" value="save" class="btn btn-outline"><i class="fas fa-save"></i> Save Only</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if preselect_emp or rec %}document.addEventListener("DOMContentLoaded", function(){ loadEmp(); calcDays(); });{% endif %}
+function loadEmp(){
+  var id = document.getElementById('empSelect').value;
+  if(!id){ return; }
+  fetch("{% url 'letter_employee_info' %}?employee_id=" + id)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('jobTitle').value = d.job_title || '';
+      document.getElementById('eid').value = d.emirates_id || '';
+    });
+}
+function calcDays(){
+  var s = document.getElementById('startDate').value;
+  var e = document.getElementById('endDate').value;
+  if(!s || !e){ document.getElementById('totalDays').value=''; return; }
+  var d1 = new Date(s), d2 = new Date(e);
+  var diff = Math.round((d2 - d1) / (1000*60*60*24)) + 1;
+  document.getElementById('totalDays').value = diff > 0 ? diff + ' day(s)' : 'Invalid range';
+}
+</script>
+{% endblock %}

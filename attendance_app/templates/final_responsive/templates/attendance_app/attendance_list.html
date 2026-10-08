@@ -1,0 +1,257 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Attendance{% endblock %}
+{% block page_title %}Attendance Records{% endblock %}
+
+{% block extra_css %}
+<style>
+@media(max-width:768px){
+  .att-filters{flex-direction:column;}
+  .att-filters .form-control,.att-filters .btn{width:100%;}
+}
+</style>
+<style>
+.nav-btn {
+  width:34px;height:34px;border-radius:8px;border:1.5px solid var(--slate-200);
+  background:white;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;color:var(--slate-600);font-size:13px;
+  text-decoration:none;
+}
+.nav-btn:hover { background:var(--orange);border-color:var(--orange);color:white; }
+.stat-pill {
+  display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;
+  font-size:12px;font-weight:700;border:1.5px solid;white-space:nowrap;
+}
+.month-day {
+  text-decoration:none;padding:8px 10px;border-radius:8px;border:1.5px solid var(--slate-200);
+  background:white;display:flex;flex-direction:column;align-items:center;gap:2px;
+  transition:all .15s;min-width:58px;
+}
+.month-day:hover { border-color:var(--orange);background:var(--orange-pale); }
+.month-day.active { border-color:var(--orange);background:var(--orange-pale); }
+.rate-bar { height:4px;border-radius:2px;background:var(--slate-100);overflow:hidden;margin-top:4px; }
+.rate-bar-fill { height:100%;border-radius:2px;transition:width .3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Attendance Records</div>
+    <div class="page-header-sub">
+      {{ selected_date|date:"l, d F Y" }}
+      {% if is_holiday %}
+        &nbsp;<span class="badge badge-purple" style="font-size:11px"><i class="fas fa-umbrella-beach"></i> {{ is_holiday.name }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if 'attendance_add' in user_perms or is_admin %}
+  <a href="{% url 'attendance_mark' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-primary">
+    <i class="fas fa-pen-to-square"></i> Mark Attendance
+  </a>
+  {% endif %}
+</div>
+
+<!-- Date Navigation -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="padding:12px 20px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <a href="?date={{ prev_date|date:'Y-m-d' }}" class="nav-btn" title="Previous Day">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+
+      <form method="get" style="display:flex;align-items:center;gap:8px">
+        <i class="fas fa-calendar-day" style="color:var(--orange);font-size:14px"></i>
+        <input type="date" name="date" class="form-control" style="width:175px;font-size:13px"
+          value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+      </form>
+
+      <a href="?date={{ next_date|date:'Y-m-d' }}" class="nav-btn" title="Next Day">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+
+      <div style="display:flex;gap:6px">
+        <a href="?date={{ today|date:'Y-m-d' }}"
+          class="btn btn-sm {% if selected_date == today %}btn-primary{% else %}btn-secondary{% endif %}"
+          style="font-size:12px">Today</a>
+        <a href="?date={{ yesterday|date:'Y-m-d' }}" class="btn btn-sm btn-secondary" style="font-size:12px">Yesterday</a>
+      </div>
+
+      <!-- Stats Pills -->
+      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+        <span class="stat-pill" style="color:#16a34a;border-color:#bbf7d0;background:#f0fdf4">
+          <i class="fas fa-circle-check" style="font-size:10px"></i> Present: {{ stat_present }}
+        </span>
+        <span class="stat-pill" style="color:#dc2626;border-color:#fecaca;background:#fef2f2">
+          <i class="fas fa-circle-xmark" style="font-size:10px"></i> Absent: {{ stat_absent }}
+        </span>
+        <span class="stat-pill" style="color:#d97706;border-color:#fde68a;background:#fffbeb">
+          <i class="fas fa-circle-half-stroke" style="font-size:10px"></i> Half Day: {{ stat_half }}
+        </span>
+        <span class="stat-pill" style="color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff">
+          <i class="fas fa-plane" style="font-size:10px"></i> Leave: {{ stat_leave }}
+        </span>
+        {% if stat_total > 0 %}
+        <span class="stat-pill" style="color:var(--orange-dark);border-color:var(--orange-light);background:var(--orange-pale)">
+          <i class="fas fa-users" style="font-size:10px"></i>
+          Rate: <strong>{{ attendance_rate }}%</strong>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Attendance Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">
+      <i class="fas fa-list-check" style="color:var(--orange)"></i>
+      {{ stat_total }} Record{{ stat_total|pluralize }} — {{ selected_date|date:"d M Y" }}
+    </span>
+    {% if stat_total > 0 %}
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--slate-500)">
+      <span>Total Hours: <strong style="color:var(--orange)">{{ stat_total_hours }}h</strong></span>
+      {% if stat_total_ot > 0 %}
+      <span>| OT: <strong style="color:#7c3aed">+{{ stat_total_ot }}h</strong></span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="table-wrap">
+    {% if attendances %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Employee</th>
+          <th style="width:130px">Status</th>
+          <th style="width:90px">In Time</th>
+          <th style="width:90px">Out Time</th>
+          <th style="width:100px">Total Hrs</th>
+          <th style="width:90px">OT Hours</th>
+          <th>Notes</th>
+          <th style="width:70px">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for att in attendances %}
+        <tr style="
+          {% if att.status == 'present' %}background:rgba(240,253,244,.5)
+          {% elif att.status == 'absent' %}background:rgba(254,242,242,.5)
+          {% elif att.status == 'half_day' %}background:rgba(255,251,235,.5)
+          {% elif att.status == 'leave' %}background:rgba(245,243,255,.5)
+          {% elif att.status == 'holiday' %}background:rgba(238,242,255,.5)
+          {% endif %}">
+          <td style="font-size:11px;font-weight:600;color:var(--slate-400)">{{ forloop.counter }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              {% if att.employee.photo %}
+              <img src="{{ att.employee.photo.url }}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0">
+              {% else %}
+              <div style="width:34px;height:34px;border-radius:8px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--orange-dark);font-size:14px;flex-shrink:0">
+                {{ att.employee.name|first|upper }}
+              </div>
+              {% endif %}
+              <div>
+                <a href="{% url 'employee_detail' att.employee.pk %}" style="font-weight:700;color:var(--slate-900);text-decoration:none;font-size:13px">{{ att.employee.name }}</a>
+                {% if att.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ att.employee.job_title }}</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge {% if att.status == 'present' %}badge-green{% elif att.status == 'absent' %}badge-red{% elif att.status == 'half_day' %}badge-yellow{% elif att.status == 'leave' %}badge-purple{% else %}badge-blue{% endif %}">
+              {% if att.status == 'present' %}✅
+              {% elif att.status == 'absent' %}❌
+              {% elif att.status == 'half_day' %}⚡
+              {% elif att.status == 'leave' %}✈️
+              {% else %}🏖{% endif %}
+              {{ att.get_status_display }}
+            </span>
+          </td>
+          <td style="font-weight:700;font-size:13px;color:#16a34a">
+            {{ att.in_time|time:"H:i"|default:"—" }}
+          </td>
+          <td style="font-weight:700;font-size:13px;color:#2563eb">
+            {{ att.out_time|time:"H:i"|default:"—" }}
+          </td>
+          <td>
+            {% if att.total_hours > 0 %}
+            <span style="font-weight:800;color:var(--orange);font-size:14px">{{ att.total_hours }}</span>
+            <span style="font-size:11px;color:var(--slate-400)">hrs</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if att.ot_hours > 0 %}
+            <span class="badge badge-purple" style="font-size:11px">+{{ att.ot_hours }}h</span>
+            {% else %}<span style="color:var(--slate-300)">—</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--slate-500)">{{ att.notes|truncatechars:28|default:"—" }}</td>
+          <td>
+            {% if 'attendance_edit' in user_perms or is_admin %}
+            <a href="{% url 'attendance_edit' att.pk %}?return_url=/attendance/?date={{ selected_date|date:'Y-m-d' }}"
+              class="btn btn-sm btn-outline" title="Edit">
+              <i class="fas fa-pen"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if stat_total_hours > 0 %}
+      <tfoot>
+        <tr style="background:var(--orange-pale);border-top:2px solid var(--orange-light)">
+          <td colspan="5" style="text-align:right;font-size:12px;font-weight:700;color:var(--slate-500);padding:10px 16px">
+            DAILY TOTALS
+          </td>
+          <td style="font-weight:800;color:var(--orange);font-size:14px;padding:10px 8px">
+            {{ stat_total_hours }}hrs
+          </td>
+          <td style="font-weight:800;color:#7c3aed;font-size:13px;padding:10px 8px">
+            {% if stat_total_ot > 0 %}+{{ stat_total_ot }}h OT{% else %}—{% endif %}
+          </td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-calendar-check" style="font-size:48px;color:var(--slate-200)"></i>
+      <p style="color:var(--slate-400)">No attendance records for <strong>{{ selected_date|date:"d M Y" }}</strong></p>
+      {% if 'attendance_add' in user_perms or is_admin %}
+      <a href="{% url 'attendance_mark' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-primary" style="margin-top:16px">
+        <i class="fas fa-pen-to-square"></i> Mark Attendance Now
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Monthly Overview -->
+{% if monthly_summary %}
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <span class="card-title">
+      <i class="fas fa-calendar-days" style="color:var(--orange)"></i>
+      {{ selected_date|date:"F Y" }} — Days with Records
+    </span>
+    <span style="font-size:12px;color:var(--slate-400)">{{ monthly_summary|length }} day{{ monthly_summary|length|pluralize }} marked</span>
+  </div>
+  <div class="card-body" style="padding:16px 20px">
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      {% for item in monthly_summary %}
+      <a href="?date={{ item.date|date:'Y-m-d' }}"
+        class="month-day {% if item.date == selected_date %}active{% endif %}">
+        <div style="font-size:10px;font-weight:700;color:var(--slate-500)">{{ item.date|date:"D" }}</div>
+        <div style="font-size:16px;font-weight:800;color:var(--slate-800)">{{ item.date|date:"d" }}</div>
+        <div style="font-size:10px;color:var(--orange);font-weight:700">{{ item.count }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

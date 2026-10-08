@@ -1,0 +1,40 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Edit Temporary Attendance{% endblock %}
+{% block page_title %}Edit Temporary Attendance{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Edit Attendance</div>
+    <div class="page-header-sub">{{ att.temp_employee.name }} — {{ att.date|date:"d M Y" }}</div>
+  </div>
+  <a href="{% url 'temp_attendance_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:520px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Worker</label>
+        <input type="text" class="form-control" readonly value="{{ att.temp_employee.name }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="text" class="form-control" readonly value="{{ att.date|date:'d M Y' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Working Hours <span class="req">*</span></label>
+        <input type="number" step="0.25" min="0" max="24" name="hours_worked" class="form-control" required value="{{ att.hours_worked }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2">{{ att.notes|default:'' }}</textarea>
+      </div>
+      <div class="divider"></div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

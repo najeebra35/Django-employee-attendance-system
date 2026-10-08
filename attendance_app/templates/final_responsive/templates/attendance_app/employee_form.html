@@ -1,0 +1,217 @@
+{% extends 'attendance_app/base.html' %}
+{% load attendance_tags %}
+{% block title %}{% if employee %}Edit{% else %}Add{% endif %} Employee{% endblock %}
+{% block page_title %}{% if employee %}Edit{% else %}Add{% endif %} Employee{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{% if employee %}Edit Employee{% else %}Add New Employee{% endif %}</div>
+    <div class="page-header-sub">Fields marked with <span style="color:var(--red)">*</span> are required. All other fields are optional.</div>
+  </div>
+  <a href="{% url 'employee_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to List</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="emp-form" novalidate>
+  {% csrf_token %}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- LEFT: Personal Info -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-id-card" style="color:var(--orange)"></i> Personal Information</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="req">*</span></label>
+            <input type="text" name="name" id="name" class="form-control" placeholder="Employee's full name"
+              value="{{ employee.name|default:'' }}" required autofocus>
+            <div id="name-err" style="color:var(--red);font-size:12px;margin-top:4px;display:none"><i class="fas fa-circle-exclamation"></i> Name is required</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" name="dob" class="form-control" value="{{ employee.dob|date:'Y-m-d'|default:'' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number</label>
+              <input type="text" name="mobile" class="form-control" placeholder="+971 50 000 0000" value="{{ employee.mobile|default:'' }}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Emirates ID No.</label>
+            <input type="text" name="emirates_id" class="form-control" placeholder="784-XXXX-XXXXXXX-X" value="{{ employee.emirates_id|default:'' }}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nationality / Country</label>
+            <select name="country" class="form-control">
+              <option value="">— Select Country —</option>
+              {% with selected=employee.country|default:'' %}
+              <option value="United Arab Emirates" {% if selected == "United Arab Emirates" %}selected{% endif %}>United Arab Emirates</option>
+              <option value="Saudi Arabia" {% if selected == "Saudi Arabia" %}selected{% endif %}>Saudi Arabia</option>
+              <option value="India" {% if selected == "India" %}selected{% endif %}>India</option>
+              <option value="Pakistan" {% if selected == "Pakistan" %}selected{% endif %}>Pakistan</option>
+              <option value="Bangladesh" {% if selected == "Bangladesh" %}selected{% endif %}>Bangladesh</option>
+              <option value="Philippines" {% if selected == "Philippines" %}selected{% endif %}>Philippines</option>
+              <option value="Egypt" {% if selected == "Egypt" %}selected{% endif %}>Egypt</option>
+              <option value="Jordan" {% if selected == "Jordan" %}selected{% endif %}>Jordan</option>
+              <option value="Lebanon" {% if selected == "Lebanon" %}selected{% endif %}>Lebanon</option>
+              <option value="Sri Lanka" {% if selected == "Sri Lanka" %}selected{% endif %}>Sri Lanka</option>
+              <option value="Nepal" {% if selected == "Nepal" %}selected{% endif %}>Nepal</option>
+              <option value="Indonesia" {% if selected == "Indonesia" %}selected{% endif %}>Indonesia</option>
+              <option value="Kenya" {% if selected == "Kenya" %}selected{% endif %}>Kenya</option>
+              <option value="Sudan" {% if selected == "Sudan" %}selected{% endif %}>Sudan</option>
+              <option value="Ethiopia" {% if selected == "Ethiopia" %}selected{% endif %}>Ethiopia</option>
+              <option value="United Kingdom" {% if selected == "United Kingdom" %}selected{% endif %}>United Kingdom</option>
+              <option value="United States" {% if selected == "United States" %}selected{% endif %}>United States</option>
+              <option value="Canada" {% if selected == "Canada" %}selected{% endif %}>Canada</option>
+              <option value="Australia" {% if selected == "Australia" %}selected{% endif %}>Australia</option>
+              <option value="Other" {% if selected == "Other" %}selected{% endif %}>Other</option>
+              {% endwith %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <textarea name="address" class="form-control" rows="2" placeholder="Building, Street, Area, City">{{ employee.address|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photo -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-image" style="color:var(--orange)"></i> Employee Photo</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div id="photo-preview" style="width:72px;height:72px;border-radius:14px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:var(--orange-dark);flex-shrink:0;overflow:hidden">
+              {% if employee.photo %}
+                <img src="{{ employee.photo.url }}" style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+                <span id="photo-initial">{{ employee.name|make_list|first|upper|default:"?" }}</span>
+              {% endif %}
+            </div>
+            <div style="flex:1">
+              <input type="file" name="photo" id="photo-input" accept="image/*" style="display:none" onchange="previewPhoto(this)">
+              <button type="button" onclick="document.getElementById('photo-input').click()" class="btn btn-outline btn-sm">
+                <i class="fas fa-upload"></i> Upload Photo
+              </button>
+              <div class="text-muted" style="font-size:11px;margin-top:6px">JPG, PNG up to 2MB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Job + Status -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-briefcase" style="color:var(--orange)"></i> Job Details</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Job Title</label>
+            <input type="text" name="job_title" class="form-control" placeholder="e.g. Site Engineer, Accountant" value="{{ employee.job_title|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Joining Date</label>
+            <input type="date" name="joining_date" class="form-control" value="{{ employee.joining_date|date:'Y-m-d'|default:'' }}">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group">
+              <label class="form-label">Employee Type</label>
+              <select name="emp_type" class="form-control">
+                <option value="permanent" {% if not employee or employee.emp_type == 'permanent' %}selected{% endif %}>Permanent</option>
+                <option value="temporary" {% if employee.emp_type == 'temporary' %}selected{% endif %}>Temporary</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-control">
+                <option value="active" {% if not employee or employee.status == 'active' %}selected{% endif %}>✅ Active</option>
+                <option value="disabled" {% if employee.status == 'disabled' %}selected{% endif %}>🔴 Disabled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-note-sticky" style="color:var(--orange)"></i> Notes / Description</span>
+        </div>
+        <div class="card-body">
+          <textarea name="description" class="form-control" rows="5" placeholder="Any additional notes about this employee (optional)...">{{ employee.description|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      <div style="background:var(--orange-pale);border:1.5px solid var(--orange-light);border-radius:10px;padding:14px 16px">
+        <div style="font-size:13px;font-weight:600;color:var(--orange-dark);margin-bottom:6px"><i class="fas fa-circle-info"></i> Quick Tips</div>
+        <ul style="font-size:12px;color:var(--slate-600);padding-left:16px;line-height:1.8">
+          <li>Only <strong>Full Name</strong> is mandatory</li>
+          <li>Set status to <strong>Disabled</strong> to hide from attendance marking</li>
+          <li>Emirates ID format: <strong>784-XXXX-XXXXXXX-X</strong></li>
+          <li>You can edit all details later from the employee list</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div style="display:flex;gap:12px;margin-top:24px;padding-top:20px;border-top:2px solid var(--slate-100)">
+    <button type="submit" class="btn btn-primary" style="min-width:160px">
+      <i class="fas fa-save"></i> {% if employee %}Update Employee{% else %}Save Employee{% endif %}
+    </button>
+    <a href="{% if employee %}{% url 'employee_detail' employee.pk %}{% else %}{% url 'employee_list' %}{% endif %}" class="btn btn-secondary">
+      Cancel
+    </a>
+  </div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+// Live preview photo
+function previewPhoto(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = document.getElementById('photo-preview');
+      preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Update initial letter as user types name
+document.getElementById('name')?.addEventListener('input', function() {
+  const initial = document.getElementById('photo-initial');
+  if (initial) initial.textContent = (this.value[0] || '?').toUpperCase();
+});
+
+// Client-side validation
+document.getElementById('emp-form').addEventListener('submit', function(e) {
+  const name = document.getElementById('name');
+  const err = document.getElementById('name-err');
+  if (!name.value.trim()) {
+    e.preventDefault();
+    name.style.borderColor = 'var(--red)';
+    err.style.display = 'block';
+    name.focus();
+  }
+});
+document.getElementById('name')?.addEventListener('input', function() {
+  this.style.borderColor = '';
+  document.getElementById('name-err').style.display = 'none';
+});
+</script>
+{% endblock %}

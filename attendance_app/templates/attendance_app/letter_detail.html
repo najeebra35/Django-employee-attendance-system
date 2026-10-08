@@ -1,0 +1,119 @@
+{% extends 'attendance_app/base.html' %}
+{% load attendance_tags %}
+{% block title %}Letter Details{% endblock %}
+{% block page_title %}Letter Details{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{{ rec.get_letter_type_display }}</div>
+    <div class="page-header-sub">{{ rec.employee.name }} &nbsp;•&nbsp; {% if rec.category == 'hr' %}HR Issued Letter{% else %}Employee Request Letter{% endif %}</div>
+  </div>
+  <a href="{% url 'letter_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to List</a>
+</div>
+
+<div class="grid" style="grid-template-columns:2fr 1fr;gap:20px;align-items:start">
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Letter Preview</span></div>
+    <div class="card-body">
+      {% if ctx %}
+      <div style="border:1px solid var(--slate-200);border-radius:12px;padding:26px;background:#fff">
+        {% if ctx.letterhead %}
+        <div style="text-align:center;margin-bottom:4px;font-weight:800;font-size:17px;color:var(--slate-900)">{{ ctx.company.company_name }}</div>
+        <div style="text-align:center;font-size:11px;color:var(--slate-500);margin-bottom:14px">{{ ctx.company.company_address }}</div>
+        <hr style="border:none;border-top:2px solid var(--orange);margin-bottom:14px">
+        {% endif %}
+
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate-500);margin-bottom:6px">
+          <span>{% if ctx.ref_no %}<b>Ref:</b> {{ ctx.ref_no }}{% endif %}</span>
+          <span><b>Date:</b> {{ ctx.date|date:"d M Y" }}</span>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--slate-200);margin-bottom:10px">
+
+        <div style="text-align:center;font-weight:800;{% if ctx.letterhead %}color:var(--orange);{% else %}color:var(--slate-900);{% endif %}font-size:14px;margin-bottom:4px">{{ ctx.title|upper }}</div>
+        <div style="text-align:center;margin-bottom:14px"><span style="display:inline-block;width:60px;border-top:2px solid {% if ctx.letterhead %}var(--orange){% else %}var(--slate-900){% endif %}"></span></div>
+
+        {% if ctx.to_block %}
+        <div style="font-size:10px;font-weight:700;color:var(--slate-500);margin-bottom:2px">TO,</div>
+        {% for line in ctx.to_block %}<div style="font-size:13px;{% if forloop.counter <= 2 %}font-weight:700{% endif %};margin-bottom:1px">{{ line }}</div>{% endfor %}
+        <div style="margin-bottom:8px"></div>
+        {% endif %}
+        {% if ctx.from_block %}
+        <div style="font-size:10px;font-weight:700;color:var(--slate-500);margin-bottom:2px">FROM,</div>
+        {% for line in ctx.from_block %}<div style="font-size:13px;{% if forloop.first %}font-weight:700{% endif %};margin-bottom:1px">{{ line }}</div>{% endfor %}
+        <div style="margin-bottom:10px"></div>
+        {% endif %}
+
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Subject: {{ ctx.subject }}</div>
+        <hr style="border:none;border-top:1px solid var(--slate-200);margin-bottom:10px">
+
+        {% if ctx.salutation %}<div style="font-size:13px;margin-bottom:8px">{{ ctx.salutation }}</div>{% endif %}
+        {% for para in ctx.intro %}
+        <p style="font-size:13px;line-height:1.6;margin-bottom:10px;text-align:justify">{{ para|md_bold }}</p>
+        {% endfor %}
+
+        {% if ctx.details_box %}
+        <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px">{{ ctx.details_box.title|upper }}</div>
+        <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:14px">
+          {% for label, value in ctx.details_box.rows %}
+          <div style="display:flex;justify-content:space-between;padding:7px 12px;{% if not forloop.last %}border-bottom:1px solid #e2e8f0;{% endif %}font-size:12.5px">
+            <span style="color:var(--slate-500)">{{ label }}</span>
+            <span style="font-weight:700;color:var(--slate-900)">{{ value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if ctx.reason_block %}
+        <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:4px">{{ ctx.reason_block.title|upper }}</div>
+        <p style="font-size:13px;line-height:1.6;margin-bottom:12px">{{ ctx.reason_block.text }}</p>
+        {% endif %}
+
+        {% for para in ctx.body %}
+        <p style="font-size:13px;line-height:1.6;margin-bottom:10px;text-align:justify">{{ para|md_bold }}</p>
+        {% endfor %}
+
+        <div style="margin-top:10px;font-size:12px;color:var(--slate-400);text-align:center;font-style:italic;border-top:1px solid var(--slate-200);padding-top:8px">
+          {% if ctx.footer_note %}{{ ctx.footer_note }}{% else %}{{ ctx.company.company_name }}{% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>Could not render preview — the linked employee or data may have changed.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card mb-2">
+      <div class="card-header"><span class="card-title">Actions</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+        <a href="{% url 'letter_download' rec.pk 'docx' %}" class="btn btn-primary"><i class="fas fa-file-word"></i> Download Word</a>
+        <a href="{% url 'letter_download' rec.pk 'pdf' %}" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Download PDF</a>
+        {% if can_edit and edit_url_name %}
+        <a href="{% url edit_url_name rec.pk %}" class="btn btn-outline"><i class="fas fa-pen"></i> Edit Letter</a>
+        <form method="post" action="{% url 'letter_delete' rec.pk %}" onsubmit="return confirm('Delete this letter record? This cannot be undone.');">
+          {% csrf_token %}
+          <input type="hidden" name="return_to" value="list">
+          <button type="submit" class="btn btn-danger" style="width:100%"><i class="fas fa-trash"></i> Delete Letter</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Info</span></div>
+      <div class="card-body" style="font-size:13px;display:flex;flex-direction:column;gap:8px">
+        <div><b>Employee:</b> <a href="{% url 'employee_detail' rec.employee.pk %}?tab=letters">{{ rec.employee.name }}</a></div>
+        {% if rec.reference_no %}<div><b>Reference No:</b> {{ rec.reference_no }}</div>{% endif %}
+        <div><b>Created:</b> {{ rec.created_at|date:"d M Y, H:i" }} by {{ rec.generated_by.username|default:"—" }}</div>
+        {% if rec.updated_at != rec.created_at %}
+        <div><b>Last Updated:</b> {{ rec.updated_at|date:"d M Y, H:i" }} by {{ rec.updated_by.username|default:"—" }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

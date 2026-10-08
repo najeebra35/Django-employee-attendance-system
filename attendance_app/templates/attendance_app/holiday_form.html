@@ -1,0 +1,25 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Add Holiday{% endblock %}
+{% block page_title %}Add Holiday{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">Add Holiday</div>
+  <a href="{% url 'holiday_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+<div class="card" style="max-width:500px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Holiday Date <span class="req">*</span></label>
+        <input type="date" name="date" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Holiday Name <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. UAE National Day" required>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Holiday</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

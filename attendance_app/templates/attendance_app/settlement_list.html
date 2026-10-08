@@ -1,0 +1,64 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Settlements{% endblock %}
+{% block page_title %}Settlements{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Settlements</div>
+    <div class="page-header-sub">OT and leave-deduction settlement entries — manual entry, for record and history</div>
+  </div>
+  {% if can_manage %}
+  <a href="{% url 'settlement_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Settlement</a>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap">
+      <select name="employee" class="form-control" style="max-width:260px" onchange="this.form.submit()">
+        <option value="">All Employees</option>
+        {% for emp in employees %}
+        <option value="{{ emp.pk }}" {% if emp_id == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+        {% endfor %}
+      </select>
+      {% if emp_id %}<a href="{% url 'settlement_list' %}" class="btn btn-secondary btn-sm">Clear</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Period</th><th>OT Amount</th><th>Leave Days</th><th>Leave Deduction</th><th>Net Amount</th><th>Settlement Date</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for s in settlements %}
+        <tr>
+          <td><a href="{% url 'employee_detail' s.employee.pk %}?tab=settlements">{{ s.employee.name }}</a></td>
+          <td>{{ s.from_date|date:"d M Y" }} — {{ s.to_date|date:"d M Y" }}</td>
+          <td>AED {{ s.ot_amount|floatformat:2 }}</td>
+          <td>{{ s.leave_days|floatformat:1 }}</td>
+          <td>AED {{ s.leave_deduction_amount|floatformat:2 }}</td>
+          <td style="font-weight:700;color:var(--orange)">AED {{ s.net_amount|floatformat:2 }}</td>
+          <td>{{ s.settlement_date|date:"d M Y" }}</td>
+          <td>
+            {% if can_manage %}
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'settlement_edit' s.pk %}" class="btn btn-sm btn-secondary" title="Edit"><i class="fas fa-pen"></i></a>
+              <form method="post" action="{% url 'settlement_delete' s.pk %}" onsubmit="return confirm('Delete this settlement record? This cannot be undone.');" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><div class="empty-state"><i class="fas fa-hand-holding-dollar"></i><p>No settlements recorded yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

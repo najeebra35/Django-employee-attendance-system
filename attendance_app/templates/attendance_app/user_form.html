@@ -1,0 +1,121 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ action }} User{% endblock %}
+{% block page_title %}{{ action }} User{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-title">{{ action }} User</div>
+  <a href="{% url 'user_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="grid grid-2" style="gap:24px">
+    <!-- User Info -->
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="fas fa-user" style="color:var(--orange)"></i> Account Details</span></div>
+      <div class="card-body">
+        {% if action == 'Add' %}
+        <div class="form-group">
+          <label class="form-label">Username <span class="req">*</span></label>
+          <input type="text" name="username" class="form-control" placeholder="Login username" required>
+        </div>
+        {% else %}
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" value="{{ user_obj.username }}" disabled style="background:var(--slate-50)">
+        </div>
+        {% endif %}
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" name="first_name" class="form-control" value="{{ user_obj.first_name|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" name="last_name" class="form-control" value="{{ user_obj.last_name|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ user_obj.email|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password {% if action == 'Edit' %}<span style="color:var(--slate-400);font-weight:400">(leave blank to keep current)</span>{% else %}<span class="req">*</span>{% endif %}</label>
+          <input type="password" name="password" class="form-control" placeholder="{% if action == 'Edit' %}Leave blank to keep{% else %}Enter password{% endif %}" {% if action == 'Add' %}required{% endif %}>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permissions -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fas fa-shield-halved" style="color:var(--orange)"></i> Permissions</span>
+        <div style="display:flex;gap:6px">
+          <button type="button" onclick="toggleAll(true)" class="btn btn-sm btn-outline">All</button>
+          <button type="button" onclick="toggleAll(false)" class="btn btn-sm btn-outline">None</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:16px">
+        {% regroup all_perms by 0|slice:":0" as perm_groups %}
+
+        {% with current_group="" %}
+        {% for perm_code, perm_name in all_perms %}
+          {% with group=perm_code|cut:"_view"|cut:"_add"|cut:"_edit"|cut:"_delete"|cut:"_detail"|cut:"_manage" %}
+          {% if group != current_group %}
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--slate-400);padding:10px 0 4px;{% if not forloop.first %}border-top:1px solid var(--slate-100);margin-top:6px{% endif %}">
+            {{ group|title }}
+          </div>
+          {% endif %}
+          {% endwith %}
+
+          <label style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:7px;cursor:pointer;transition:background .15s"
+                 onmouseover="this.style.background='var(--orange-pale)'" onmouseout="this.style.background=''">
+            <input type="checkbox" name="permissions" value="{{ perm_code }}" style="accent-color:var(--orange);width:15px;height:15px"
+              {% if user_perm and perm_code in user_perm.permissions %}checked{% endif %}>
+            <span style="font-size:13.5px">{{ perm_name }}</span>
+          </label>
+        {% endfor %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+
+  {% if action == 'Edit' %}
+  <!-- Employee Portal Link -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-header"><span class="card-title"><i class="fas fa-id-badge" style="color:var(--orange)"></i> Employee Portal Link</span></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--slate-500);margin-bottom:12px">
+        Link this user to an employee record so they can log in and view their attendance via the Employee Portal.
+        {% if linked_emp %}<span style="color:#16a34a;font-weight:700"> Currently linked to: {{ linked_emp.name }}</span>{% endif %}
+      </div>
+      <div class="form-group" style="max-width:320px">
+        <label class="form-label">Link to Employee</label>
+        <select name="employee_link" class="form-control">
+          <option value="">— No link (admin/staff user) —</option>
+          {% if linked_emp %}
+          <option value="{{ linked_emp.pk }}" selected>{{ linked_emp.name }} (currently linked)</option>
+          {% endif %}
+          {% for emp in unlinked_emps %}
+          <option value="{{ emp.pk }}">{{ emp.name }}{% if emp.job_title %} — {{ emp.job_title }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <div style="font-size:11px;color:var(--slate-400);margin-top:4px">Portal users are redirected to /portal/ after login and can only see their own attendance.</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex gap-2 mt-2" style="margin-top:20px">
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> {{ action }} User</button>
+    <a href="{% url 'user_list' %}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleAll(val) {
+  document.querySelectorAll('input[name="permissions"]').forEach(c => c.checked = val);
+}
+</script>
+{% endblock %}

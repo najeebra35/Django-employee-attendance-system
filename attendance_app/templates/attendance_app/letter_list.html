@@ -1,0 +1,78 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}All Letters{% endblock %}
+{% block page_title %}All Letters{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">All Letters</div>
+    <div class="page-header-sub">Every letter generated from this system — view, edit, download or delete</div>
+  </div>
+  <a href="{% url 'letter_hub' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Letters</a>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" name="q" class="form-control" style="max-width:220px" placeholder="Search employee..." value="{{ q }}">
+      <select name="category" class="form-control" style="max-width:200px">
+        <option value="">All Categories</option>
+        <option value="request" {% if category == 'request' %}selected{% endif %}>Employee Request Letters</option>
+        <option value="hr" {% if category == 'hr' %}selected{% endif %}>HR Issued Letters</option>
+      </select>
+      <select name="type" class="form-control" style="max-width:240px">
+        <option value="">All Letter Types</option>
+        {% for code, label in letter_types %}
+        <option value="{{ code }}" {% if letter_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="employee" class="form-control" style="max-width:220px">
+        <option value="">All Employees</option>
+        {% for emp in employees %}
+        <option value="{{ emp.pk }}" {% if emp_id == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{% url 'letter_list' %}" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Letter Type</th><th>Category</th><th>Reference No</th><th>Created</th><th>Updated</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.employee.name }}</td>
+          <td>{{ log.get_letter_type_display }}</td>
+          <td>{% if log.category == 'hr' %}<span class="badge badge-purple">HR</span>{% else %}<span class="badge badge-blue">Request</span>{% endif %}</td>
+          <td>{{ log.reference_no|default:"—" }}</td>
+          <td>{{ log.created_at|date:"d M Y, H:i" }}<div style="font-size:11px;color:var(--slate-400)">by {{ log.generated_by.username|default:"—" }}</div></td>
+          <td>
+            {% if log.updated_at != log.created_at %}
+            {{ log.updated_at|date:"d M Y, H:i" }}<div style="font-size:11px;color:var(--slate-400)">by {{ log.updated_by.username|default:"—" }}</div>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <a href="{% url 'letter_detail' log.pk %}" class="btn btn-sm btn-secondary" title="View"><i class="fas fa-eye"></i></a>
+              <a href="{% url 'letter_download' log.pk 'docx' %}" class="btn btn-sm btn-secondary" title="Download Word"><i class="fas fa-file-word"></i></a>
+              <a href="{% url 'letter_download' log.pk 'pdf' %}" class="btn btn-sm btn-secondary" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
+              <form method="post" action="{% url 'letter_delete' log.pk %}" onsubmit="return confirm('Delete this letter record? This cannot be undone.');" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No letters found.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

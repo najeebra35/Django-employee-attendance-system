@@ -1,0 +1,164 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{{ action }} Document{% endblock %}
+{% block page_title %}{{ action }} Document{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-title">{{ action }} Document</div>
+  <a href="{% url 'document_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:24px">
+
+    <!-- Main form -->
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="fas fa-file-lines" style="color:var(--orange)"></i> Document Details</span></div>
+      <div class="card-body">
+
+        {% if action == 'Add' %}
+        <div class="form-group">
+          <label class="form-label">Employee <span style="color:#dc2626">*</span></label>
+          <select name="employee" class="form-control" required>
+            <option value="">— Select Employee —</option>
+            {% for emp in employees %}
+            <option value="{{ emp.pk }}" {% if emp.pk|stringformat:'s' == preselect_emp %}selected{% endif %}>{{ emp.name }}{% if emp.job_title %} — {{ emp.job_title }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% else %}
+        <div class="form-group">
+          <label class="form-label">Employee</label>
+          <input type="text" class="form-control" value="{{ doc.employee.name }}" disabled style="background:var(--slate-50)">
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label">Document Type <span style="color:#dc2626">*</span></label>
+          <select name="doc_type" class="form-control" required id="doc-type-select" onchange="updateRequiresExpiry(this)">
+            <option value="">— Select Type —</option>
+            {% for dt in doc_types %}
+            <option value="{{ dt.pk }}"
+              data-requires-expiry="{{ dt.requires_expiry|yesno:'1,0' }}"
+              data-alert-days="{{ dt.alert_days }}"
+              {% if action == 'Edit' and doc.doc_type.pk == dt.pk %}selected{% endif %}>
+              {{ dt.name }}{% if not dt.requires_expiry %} (no expiry){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Document / Reference Number</label>
+          <input type="text" name="doc_number" class="form-control" placeholder="e.g. A12345678"
+            value="{{ doc.doc_number|default:'' }}">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group">
+            <label class="form-label">Issue Date</label>
+            <input type="date" name="issue_date" class="form-control"
+              value="{{ doc.issue_date|date:'Y-m-d'|default:'' }}">
+          </div>
+          <div class="form-group" id="expiry-group">
+            <label class="form-label">Expiry Date <span id="expiry-req" style="color:#dc2626">*</span></label>
+            <input type="date" name="expiry_date" class="form-control" id="expiry-date-input"
+              value="{{ doc.expiry_date|date:'Y-m-d'|default:'' }}">
+            <div id="expiry-hint" style="font-size:11px;color:var(--slate-400);margin-top:4px"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes…">{{ doc.notes|default:'' }}</textarea>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- File upload + info -->
+    <div>
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="fas fa-paperclip" style="color:var(--orange)"></i> File Attachment</span></div>
+        <div class="card-body">
+          {% if action == 'Edit' and doc.file %}
+          <div style="padding:12px;background:var(--slate-50);border-radius:8px;border:1px solid var(--slate-200);margin-bottom:14px;display:flex;align-items:center;gap:10px">
+            <i class="fas fa-file-circle-check" style="color:#16a34a;font-size:18px"></i>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--slate-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Current file attached</div>
+              <div style="font-size:10px;color:var(--slate-400)">{{ doc.file_extension|upper }} file</div>
+            </div>
+            <a href="{% url 'document_download' doc.pk %}" class="btn btn-sm btn-outline" style="font-size:11px;flex-shrink:0"><i class="fas fa-download"></i></a>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#dc2626;cursor:pointer;margin-bottom:14px">
+            <input type="checkbox" name="remove_file" value="1" style="accent-color:#dc2626"> Remove current file
+          </label>
+          <div style="font-size:12px;font-weight:600;color:var(--slate-500);margin-bottom:8px">Replace with new file:</div>
+          {% endif %}
+
+          <label style="display:block;border:2px dashed var(--slate-300);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s" id="file-drop-zone"
+            onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--slate-300)'">
+            <i class="fas fa-cloud-arrow-up" style="font-size:28px;color:var(--slate-300);display:block;margin-bottom:10px" id="upload-icon"></i>
+            <div style="font-size:13px;font-weight:600;color:var(--slate-500)" id="upload-label">Click to upload file</div>
+            <div style="font-size:11px;color:var(--slate-400);margin-top:4px">PDF, JPG, PNG, DOC, DOCX — max 10MB</div>
+            <input type="file" name="file" id="file-input" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onchange="updateFileLabel(this)">
+          </label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-body">
+          <div style="font-size:12px;font-weight:700;color:var(--slate-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Tips</div>
+          <ul style="font-size:12px;color:var(--slate-500);padding-left:16px;line-height:2">
+            <li>Scan documents at high quality (300 DPI+)</li>
+            <li>Keep file size under 10MB</li>
+            <li>Use PDF for official documents</li>
+            <li>Set correct expiry dates for auto-alerts</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> {{ action }} Document</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('file-drop-zone').addEventListener('click', function() {
+  document.getElementById('file-input').click();
+});
+
+function updateFileLabel(input) {
+  if (input.files && input.files[0]) {
+    var f = input.files[0];
+    document.getElementById('upload-label').textContent = f.name;
+    document.getElementById('upload-icon').className = 'fas fa-file-circle-check';
+    document.getElementById('upload-icon').style.color = '#16a34a';
+  }
+}
+
+function updateRequiresExpiry(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var req = opt.getAttribute('data-requires-expiry');
+  var alert = opt.getAttribute('data-alert-days');
+  var hint = document.getElementById('expiry-hint');
+  var reqStar = document.getElementById('expiry-req');
+  if (req === '0') {
+    hint.textContent = 'This document type has no expiry';
+    reqStar.style.display = 'none';
+  } else {
+    hint.textContent = alert ? 'Alert will trigger ' + alert + ' days before expiry' : '';
+    reqStar.style.display = '';
+  }
+}
+
+// Trigger on page load for Edit mode
+var sel = document.getElementById('doc-type-select');
+if (sel && sel.value) updateRequiresExpiry(sel);
+</script>
+{% endblock %}

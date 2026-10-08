@@ -1,0 +1,63 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Mark Temporary Attendance{% endblock %}
+{% block page_title %}Mark Temporary Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title">Mark Temporary Attendance</div>
+    <div class="page-header-sub">{{ selected_date|date:"l, d F Y" }} — enter total working hours only for workers present that day</div>
+  </div>
+  <a href="{% url 'temp_attendance_list' %}" class="btn btn-secondary"><i class="fas fa-eye"></i> View Records</a>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <a href="?date={{ prev_date|date:'Y-m-d' }}" class="btn btn-sm btn-secondary" title="Previous Day"><i class="fas fa-chevron-left"></i></a>
+      <input type="date" value="{{ selected_date|date:'Y-m-d' }}" onchange="window.location='?date='+this.value" class="form-control" style="max-width:170px">
+      <a href="?date={{ next_date|date:'Y-m-d' }}" class="btn btn-sm btn-secondary" title="Next Day"><i class="fas fa-chevron-right"></i></a>
+      {% if selected_date != today %}<a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-sm btn-outline">Today</a>{% endif %}
+      <span style="margin-left:auto;font-size:12px;color:var(--slate-500)">{{ marked_count }} of {{ total_count }} worker{{ total_count|pluralize }} recorded</span>
+    </div>
+  </div>
+</div>
+
+<form method="post" id="markForm">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Worker</th><th>Designation</th><th style="width:160px">Hours Worked</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for row in worker_rows %}
+          <tr>
+            <td style="font-weight:600">{{ row.worker.name }}</td>
+            <td>{{ row.worker.designation|default:"—" }}</td>
+            <td>
+              <input type="number" step="0.25" min="0" max="24" name="hours_{{ row.worker.pk }}" class="form-control"
+                     placeholder="e.g. 8" value="{{ row.att.hours_worked|default:'' }}" style="max-width:120px">
+            </td>
+            <td>
+              <input type="text" name="notes_{{ row.worker.pk }}" class="form-control" placeholder="Optional"
+                     value="{{ row.att.notes|default:'' }}">
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4"><div class="empty-state"><i class="fas fa-user-clock"></i><p>No active temporary workers yet. <a href="{% url 'temp_employee_add' %}">Add one</a> first.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if worker_rows %}
+    <div class="card-body" style="border-top:1px solid var(--slate-200)">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Attendance</button>
+      <span style="font-size:11px;color:var(--slate-400);margin-left:10px">Leave hours blank for anyone who did not work — no record will be created/kept for that day.</span>
+    </div>
+    {% endif %}
+  </div>
+</form>
+
+{% endblock %}

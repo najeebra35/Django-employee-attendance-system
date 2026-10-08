@@ -1,0 +1,83 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}{% if rec %}Edit{% else %}New{% endif %} NOC Letter{% endblock %}
+{% block page_title %}{% if rec %}Edit{% else %}New{% endif %} NOC Letter{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">{% if rec %}Edit{% else %}New{% endif %} No Objection Certificate (NOC)</div>
+    <div class="page-header-sub">Issued by HR for visa, loan, license or other purpose</div>
+  </div>
+  <a href="{% if rec %}{% url 'letter_detail' rec.pk %}{% else %}{% url 'letter_hub' %}{% endif %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="post" id="letterForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">Employee <span class="req">*</span></label>
+        <select name="employee" class="form-control" required>
+          <option value="">Select Employee</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}" {% if preselect_emp == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if rec %}
+      <div class="form-group">
+        <label class="form-label">Reference No</label>
+        <input type="text" class="form-control" readonly value="{{ rec.reference_no }}">
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Purpose <span class="req">*</span></label>
+        <select name="purpose" class="form-control" required onchange="togglePurpose()" id="purposeSelect">
+          <option value="">Select Purpose</option>
+          {% for p in purposes %}
+          <option value="{{ p }}" {% if initial.purpose == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" id="purposeCustomWrap" style="display:none">
+        <label class="form-label">Specify Purpose <span class="req">*</span></label>
+        <input type="text" name="purpose_custom" class="form-control" placeholder="e.g. Company Registration" value="{{ initial.purpose|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Addressed To</label>
+        <input type="text" name="addressed_to" class="form-control" placeholder="Default: To Whomsoever It May Concern," value="{{ initial.addressed_to|default:'' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Letter / Issue Date</label>
+        <input type="date" name="letter_date" class="form-control" value="{{ initial.letter_date|default:'' }}">
+      </div>
+
+      <div class="divider"></div>
+      <div class="actions-row">
+        <button type="submit" name="action" value="docx" class="btn btn-primary"><i class="fas fa-file-word"></i> Download Word</button>
+        <button type="submit" name="action" value="pdf" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        {% if rec %}
+        <button type="submit" name="action" value="save" class="btn btn-outline"><i class="fas fa-save"></i> Save Only</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePurpose(){
+  var v = document.getElementById('purposeSelect').value;
+  document.getElementById('purposeCustomWrap').style.display = (v === 'Other') ? 'block' : 'none';
+}
+document.addEventListener("DOMContentLoaded", togglePurpose);
+</script>
+{% endblock %}

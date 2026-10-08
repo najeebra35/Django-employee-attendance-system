@@ -1,0 +1,110 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Monthly Report{% endblock %}
+{% block page_title %}Monthly Summary Report{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">📋 Monthly Summary — {{ month_name }}</div>
+    <div class="page-header-sub">{{ rows|length }} employee{{ rows|length|pluralize }} · {{ working_days }} working days</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{% url 'reports' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Reports</a>
+    <a href="{% url 'report_monthly_export' %}?year={{ year }}&month={{ month }}&employee={{ selected_emp }}" class="btn btn-primary">
+      <i class="fas fa-file-excel"></i> Export Excel
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:18px">
+  <div class="card-body" style="padding:14px 20px">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Year</label>
+        <select name="year" class="form-control" style="width:90px;font-size:13px">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Month</label>
+        <select name="month" class="form-control" style="width:130px;font-size:13px">
+          {% for mn, ml in months %}<option value="{{ mn }}" {% if mn == month %}selected{% endif %}>{{ ml }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--slate-500)">Employee</label>
+        <select name="employee" class="form-control" style="width:180px;font-size:13px">
+          <option value="">All Employees</option>
+          {% for emp in employees %}<option value="{{ emp.pk }}" {% if emp.pk|stringformat:'s' == selected_emp %}selected{% endif %}>{{ emp.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="font-size:13px"><i class="fas fa-filter"></i> Apply</button>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-wrap">
+    {% if rows %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Employee</th>
+          <th style="text-align:center">Present</th>
+          <th style="text-align:center">Half Day</th>
+          <th style="text-align:center">Absent</th>
+          <th style="text-align:center">Leave</th>
+          <th style="text-align:center">Total Hrs</th>
+          <th style="text-align:center">OT Hrs</th>
+          <th style="text-align:center;width:110px">Att. Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td style="font-size:11px;color:var(--slate-400);font-weight:600">{{ forloop.counter }}</td>
+          <td>
+            <div style="font-weight:700;color:var(--slate-900);font-size:13px">{{ row.employee.name }}</div>
+            {% if row.employee.job_title %}<div style="font-size:11px;color:var(--slate-400)">{{ row.employee.job_title }}</div>{% endif %}
+          </td>
+          <td style="text-align:center"><span class="badge badge-green" style="font-size:12px">{{ row.present }}</span></td>
+          <td style="text-align:center"><span class="badge badge-yellow" style="font-size:12px">{{ row.half_day }}</span></td>
+          <td style="text-align:center"><span class="badge badge-red" style="font-size:12px">{{ row.absent }}</span></td>
+          <td style="text-align:center"><span class="badge badge-purple" style="font-size:12px">{{ row.leave }}</span></td>
+          <td style="text-align:center;font-weight:700;color:var(--orange)">{{ row.total_hrs }}h</td>
+          <td style="text-align:center;font-weight:700;color:#7c3aed">{% if row.total_ot > 0 %}+{{ row.total_ot }}h{% else %}<span style="color:var(--slate-300)">—</span>{% endif %}</td>
+          <td style="text-align:center">
+            <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--slate-100);overflow:hidden;max-width:50px">
+                <div style="height:100%;border-radius:3px;width:{{ row.att_rate }}%;background:{% if row.att_rate >= 80 %}#22c55e{% elif row.att_rate >= 60 %}#f59e0b{% else %}#ef4444{% endif %}"></div>
+              </div>
+              <span style="font-size:12px;font-weight:800;color:{% if row.att_rate >= 80 %}#16a34a{% elif row.att_rate >= 60 %}#d97706{% else %}#dc2626{% endif %}">{{ row.att_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--orange-pale);border-top:2px solid var(--orange-light)">
+          <td colspan="2" style="font-weight:800;font-size:12px;color:var(--slate-600);padding:10px 16px">TOTALS</td>
+          <td style="text-align:center;font-weight:800;color:#16a34a">{% for r in rows %}{{ r.present }}{% if not forloop.last %}+{% endif %}{% endfor %}</td>
+          <td></td>
+          <td style="text-align:center;font-weight:800;color:#dc2626"></td>
+          <td></td>
+          <td style="text-align:center;font-weight:800;color:var(--orange)">
+            {% with total=0 %}{% for r in rows %}{{ r.total_hrs }}{% endfor %}{% endwith %}
+          </td>
+          <td style="text-align:center;font-weight:800;color:#7c3aed"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-chart-bar"></i><p>No data for {{ month_name }}</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

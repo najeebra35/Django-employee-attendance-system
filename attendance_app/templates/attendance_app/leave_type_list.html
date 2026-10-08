@@ -1,0 +1,52 @@
+{% extends 'attendance_app/base.html' %}
+{% block title %}Leave Types{% endblock %}
+{% block page_title %}Leave Types{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">Leave Types</div>
+  <a href="{% url 'leave_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Leaves</a>
+</div>
+<div class="grid grid-2" style="gap:24px">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Add Leave Type</span></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'leave_type_add' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Name <span class="req">*</span></label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Annual Leave" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Days Allowed Per Year</label>
+          <input type="number" name="days_allowed" class="form-control" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Type</button>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Existing Types</span></div>
+    <div class="table-wrap">
+      {% if leave_types %}
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Days/Year</th></tr></thead>
+        <tbody>
+          {% for lt in leave_types %}
+          <tr>
+            <td style="font-weight:600">{{ lt.name }}</td>
+            <td><span class="badge badge-orange">{{ lt.days_allowed }} days</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:30px"><i class="fas fa-list"></i><p>No leave types yet</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
